@@ -55,10 +55,9 @@ class Assembler {
     int process_call_inst(smatch match);
     int process_ret_inst(smatch match);
     int process_jmp_inst(smatch match);
-    //
-    int process_jeq_inst(smatch match);
-    int process_jne_inst(smatch match);
-    int process_jgt_inst(smatch match);
+    int process_beq_inst(smatch match);
+    int process_bne_inst(smatch match);
+    int process_bgt_inst(smatch match);
     //
     int process_push_inst(smatch match);
     int process_pop_inst(smatch match);
@@ -80,7 +79,7 @@ class Assembler {
     int process_st_inst(smatch match);
     //added
     int process_csrrd_inst(smatch match);
-    int process_csrwr_insst(smatch match);
+    int process_csrwr_inst(smatch match);
 
     int process_operand(string operand,string reg, bool load_store);
     void printSymbolTable();

@@ -14,7 +14,7 @@ public:
   //------------------------------------------------Helpers----------------------------------------------------
   string symbol_regex = "[a-zA-Z][_A-Za-z0-9]*";
   string literal_regex = "(-?[0-9]+)|(0[xX][0-9a-fA-F]+)";
-  string register_regex = "(r[0-7]|psw)";
+  string register_regex = "(r[0-15]|sp|pc)";
 
   //-------------------------------------------------Common symbols----------------------------------------------
   regex tab = regex("[ \t]+");
@@ -60,14 +60,16 @@ public:
   regex test_inst = regex("^(test) " + register_regex + "," + register_regex);
   regex shl_inst = regex("^(shl) " + register_regex + "," + register_regex);
   regex shr_inst = regex("^(shr) " + register_regex + "," + register_regex);
-  regex ldr_inst = regex("^(ldr) (.*)");
-  regex str_inst = regex("^(str) (.*)");
+  regex ld_inst = regex("^(ld) (.*)");
+  regex st_inst = regex("^(st) (.*)");
   regex call_inst = regex("^(call) (.*)");
   regex ret_inst = regex("^(ret)$");
   regex jmp_inst = regex("^(jmp) (.*)");
-  regex jeq_inst = regex("^(jeq) (.*)");
-  regex jne_inst = regex("^(jne) (.*)");
-  regex jgt_inst = regex("^(jgt) (.*)");
+  regex beq_inst = regex("^(beq) (.*)");
+  regex bne_inst = regex("^(bne) (.*)");
+  regex bgt_inst = regex("^(bgt) (.*)");
+  regex csrrd_inst = regex("^(csrrd) (.*)");
+  regex csrwr_inst = regex("^(csrwr) (.*)");
 
   //--------------------------------------------------Operand---------------------------------------------------
   
@@ -75,26 +77,17 @@ public:
   regex sym_regex = regex(symbol_regex);
   regex lit_regex = regex(literal_regex);
 
-
   regex absolute_operand_regex = regex("(^\\$" + literal_regex + "|" + symbol_regex + ")$");
   regex memory_direct_operand_regex = regex("^(" + literal_regex + "|" + symbol_regex + ")$");
-  regex pc_relative_operand_regex = regex("^%(" + symbol_regex + ")$");
-  regex reg_dir_regex = regex("^("+register_regex+")$");
-  regex register_absolute_operand_regex = regex("(^\\[" + register_regex + "\\])");
-  regex register_relative_operand_regex = regex("(^\\[" + register_regex + " \\+ (" + symbol_regex + "|" + literal_regex + ")\\])$");
+  regex reg_dir_regex = regex("^(\\%"+register_regex+")$");
+  regex register_absolute_operand_regex = regex("(^\\[\\%" + register_regex + "\\])");
+  regex register_relative_operand_regex = regex("(^\\[\\%" + register_regex + " \\+ (" + symbol_regex + "|" + literal_regex + ")\\])$");
   // string operand_regex = absolute_operand_regex + "|" + memory_direct_operand_regex + "|" + pc_relative_operand_regex  + "|" + reg_dir_regex + "|" + register_absolute_operand_regex + "|" + register_relative_operand_regex;
   
   // //-----------------------------------------------Jump----------------------------------------------------------
   
   regex jump_absolute_operand_regex = regex("(^" + literal_regex +"|"+ symbol_regex+")$");
-  regex jump_pc_relative_operand_regex = regex("^%(" + symbol_regex + ")$");
-  regex jump_memory_direct_operand_regex = regex("(^\\*" + literal_regex + "|" + symbol_regex + ")$");
-  regex jump_reg_direct_operand_regex = regex("(^\\*" + register_regex + ")$");
-  regex jump_reg_indirect_operand_regex = regex("(^\\*\\[" + register_regex + "\\])$");
-  regex jump_reg_indirect_displ_operand_regex = regex("(^\\*\\[" + register_regex + " \\+ (" + symbol_regex + "|" + literal_regex + ")\\])$");
-  // string jump_operand_regex = literal_regex + "|" + symbol_regex + "|" + jump_pc_relative_operand_regex + "|" + jump_memory_direct_operand_regex + "|" + jump_reg_direct_operand_regex + "|" + jump_reg_direct_operand_regex + "|" + jump_reg_indirect_operand_regex + "|" + jump_reg_indirect_displ_operand_regex;
   
-
   //------------------------------------------------Other--------------------------------------------------------
   regex only_label = regex("^(" + symbol_regex + "):$");
   regex label_with_data = regex("^(" + symbol_regex + "):(.*)$");
