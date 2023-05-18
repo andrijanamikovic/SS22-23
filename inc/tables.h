@@ -46,5 +46,34 @@ class SectionTableNode {
     SectionTableNode();
 };
 
+enum INSTRUCTIONS{
+  HALT = 0x00,
+  INT = 0x10,
+  XCHG = 0x40,
+  ADD = 0x50,
+  SUB = 0x51,
+  MUL = 0x52,
+  DIV = 0x53,
+  NOT = 0x60,
+  AND = 0x61,
+  OR = 0x62,
+  XOR = 0x63,
+  SHL = 0x70,
+  SHR = 0x71,
+  CALL = 0x20,
+  JMP = 0x30,
+  BEQ = 0x31,
+  BNE = 0x31,
+  BGT = 0x33,
+  LD = 0x80,
+  ST = 0x90,
+  CSRRD = LD,
+  CSRWR = ST,
+  RET,
+  IRET,
+  PUSH,
+  POP
+};
+
 
 #endif

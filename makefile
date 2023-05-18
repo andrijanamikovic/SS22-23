@@ -36,6 +36,9 @@ AS6: assembler.o
 AS7: assembler.o
 	./assembler -o isr_user0.o isr_user0.s
 
+AS8: assembler.o
+	./assembler -o test.o test.s
+
 assembler.o:	$(ASSEMBLER_DIR)/main.cpp $(ASSEMBLER_DIR)/assembler.cpp $(ASSEMBLER_DIR)/tables.cpp
 	g++ -g -gdwarf-2 -fdebug-prefix-map==../ -o assembler  $(ASSEMBLER_DIR)/main.cpp $(ASSEMBLER_DIR)/assembler.cpp $(ASSEMBLER_DIR)/tables.cpp
 

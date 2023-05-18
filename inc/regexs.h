@@ -14,7 +14,7 @@ public:
   //------------------------------------------------Helpers----------------------------------------------------
   string symbol_regex = "[a-zA-Z][_A-Za-z0-9]*";
   string literal_regex = "(-?[0-9]+)|(0[xX][0-9a-fA-F]+)";
-  string register_regex = "(r[0-15]|sp|pc)";
+  string register_regex = "(r(1[0-5]|[0-9])|sp|pc)";
 
   //-------------------------------------------------Common symbols----------------------------------------------
   regex tab = regex("[ \t]+");
@@ -52,12 +52,10 @@ public:
   regex sub_inst = regex("^(sub) " + register_regex + "," + register_regex);
   regex mul_inst = regex("^(mul) " + register_regex + "," + register_regex);
   regex div_inst = regex("^(div) " + register_regex + "," + register_regex);
-  regex cmp_inst = regex("^(cmp) " + register_regex + "," + register_regex);
   regex not_inst = regex("^(not) " + register_regex);
   regex and_inst = regex("^(and) " + register_regex + "," + register_regex);
   regex or_inst = regex("^(or) " + register_regex + "," + register_regex);
   regex xor_inst = regex("^(xor) " + register_regex + "," + register_regex);
-  regex test_inst = regex("^(test) " + register_regex + "," + register_regex);
   regex shl_inst = regex("^(shl) " + register_regex + "," + register_regex);
   regex shr_inst = regex("^(shr) " + register_regex + "," + register_regex);
   regex ld_inst = regex("^(ld) (.*)");

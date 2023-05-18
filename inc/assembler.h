@@ -37,9 +37,10 @@ class Assembler {
     vector<char> data;
 
     int process();
+    int process_second_pass();
     void process_input_file();
     int process_label(string label);
-    int process_command(string command);
+    int process_command(string command, bool first);
     int process_extern_dir(smatch match);
     int process_global_dir(smatch match);
     int process_section_dir(smatch match);
@@ -47,6 +48,13 @@ class Assembler {
     int process_skip_dir(smatch match);
     int process_ascii_dir(smatch match);
     int process_end_dir(smatch match);
+    int end_dir_second(smatch match);
+
+    int section_dir_second(smatch match);
+    int word_dir_second(smatch match);
+    int ascii_dir_second(smatch match);
+    int skip_dir_second(smatch match);
+
     
     //instructions:
     int process_halt_inst(smatch match);
@@ -58,7 +66,6 @@ class Assembler {
     int process_beq_inst(smatch match);
     int process_bne_inst(smatch match);
     int process_bgt_inst(smatch match);
-    //
     int process_push_inst(smatch match);
     int process_pop_inst(smatch match);
     int process_xchg_inst(smatch match);
@@ -66,20 +73,43 @@ class Assembler {
     int process_sub_inst(smatch match);
     int process_mul_inst(smatch match);
     int process_div_inst(smatch match);
-    int process_cmp_inst(smatch match);
     int process_not_inst(smatch match);
     int process_and_inst(smatch match);
     int process_or_inst(smatch match);
     int process_xor_inst(smatch match);
-    int process_test_inst(smatch match);
     int process_shl_inst(smatch match);
     int process_shr_inst(smatch match);
-    //changed it was with reg
     int process_ld_inst(smatch match);
     int process_st_inst(smatch match);
-    //added
     int process_csrrd_inst(smatch match);
     int process_csrwr_inst(smatch match);
+    //second:
+    int halt_inst_second(smatch match);
+    int int_inst_second(smatch match);
+    int iret_inst_second(smatch match);
+    int call_inst_second(smatch match);
+    int ret_inst_second(smatch match);
+    int jmp_inst_second(smatch match);
+    int beq_inst_second(smatch match);
+    int bne_inst_second(smatch match);
+    int bgt_inst_second(smatch match);
+    int push_inst_second(smatch match);
+    int pop_inst_second(smatch match);
+    int xchg_inst_second(smatch match);
+    int add_inst_second(smatch match);
+    int sub_inst_second(smatch match);
+    int mul_inst_second(smatch match);
+    int div_inst_second(smatch match);
+    int not_inst_second(smatch match);
+    int and_inst_second(smatch match);
+    int or_inst_second(smatch match);
+    int xor_inst_second(smatch match);
+    int shl_inst_second(smatch match);
+    int shr_inst_second(smatch match);
+    int ld_inst_second(smatch match);
+    int st_inst_second(smatch match);
+    int csrrd_inst_second(smatch match);
+    int csrwr_inst_second(smatch match);
 
     int process_operand(string operand,string reg, bool load_store);
     void printSymbolTable();
