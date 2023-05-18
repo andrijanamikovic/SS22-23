@@ -1104,8 +1104,8 @@ int Assembler::push_inst_second(smatch match){
   sectionNode.data.push_back(PUSH); 
   // ovo dole je od pre
   //ali je opis inst isti samo je ovde bilo od 16b a sad od 32b
-  sectionNode.data.push_back((char)((val << 4) | 0x6)); //zzasto je ovde bilo 6
-  sectionNode.data.push_back(0x12); // i 12????
+  sectionNode.data.push_back((char)((val << 4) | 0xE)); //D -> sp
+  sectionNode.data.push_back(0x12); // 1 -> kaze vrv pokazuje na poslednju zauzetu pa treba da se uveca, 2 za registarski indirektno adresiranje
   sectionNode.size += 3;
   location_counter += 3;
   return ret;
@@ -1142,8 +1142,8 @@ int Assembler::pop_inst_second(smatch match){
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(POP);
   //ovaj ostatak je prepisan od prosle godine???
-  sectionNode.data.push_back((char)((val << 4) | 0x6)); //opet ne znam sto 4
-  sectionNode.data.push_back(0x42); // i sto 42
+  sectionNode.data.push_back((char)((val << 4) | 0xE)); //
+  sectionNode.data.push_back(0x42); // 4 treba da se pomeri negde, a 2 za nacin adresiranja to vidi sta je meni
   sectionNode.size += 3;
   location_counter += 3;
   return ret;
