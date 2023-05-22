@@ -12,6 +12,8 @@ add %r2, %r1
 sub %r13, %r12
 mul pc, %r7
 beq %r1, %r2, destinations
+csrwr %r1, %handler
+csrrd %status, %r3
 
 destinations:
 .word mathAdd

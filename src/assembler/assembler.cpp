@@ -113,6 +113,7 @@ int Assembler::process()
     }
   }
   this->end = false;
+  this->location_counter = 0;
   return this->process_second_pass();
 }
 
@@ -409,7 +410,7 @@ int Assembler::process_command(string command, bool first)
     if (first)
       ret = process_csrwr_inst(match);
     else
-      ret = csrrd_inst_second(match);
+      ret = csrwr_inst_second(match);
   }
   return ret;
 }
@@ -900,7 +901,7 @@ int Assembler::process_iret_inst(smatch match)
     return -1;
   }
   
-  location_counter++;
+  location_counter += 8;
   return ret;
 }
 int Assembler::iret_inst_second(smatch match){
@@ -919,8 +920,17 @@ int Assembler::iret_inst_second(smatch match){
     assembler_help_file << "Iret in section: " << current_section_node->name << " with size: " << current_section_node->size << endl;
   }
   // pop pc;
+  sectionNode.data.push_back(POP);
+  sectionNode.data.push_back((char)(0xE0)); 
+  sectionNode.data.push_back((char)(0xFF));
+  sectionNode.data.push_back((char)(0xFC));
   // pop status;
-  sectionNode.size++;
+  sectionNode.data.push_back((char)0x97);
+  sectionNode.data.push_back((char)(0x0E));
+  sectionNode.data.push_back((int)(0x0F));
+  sectionNode.data.push_back((char)(0xFC));
+  
+  sectionNode.size+= 8;
   return ret;
 }
 int Assembler::process_call_inst(smatch match)
@@ -960,7 +970,7 @@ int Assembler::process_ret_inst(smatch match)
     return -1;
   }
 
-  location_counter+= 2;
+  location_counter+= 4;
   return ret;
 }
 int Assembler::ret_inst_second(smatch match) {
@@ -980,11 +990,11 @@ int Assembler::ret_inst_second(smatch match) {
   SectionTableNode &sectionNode = sections.at(this->current_section);
   // ret = pop pc;
   sectionNode.data.push_back(POP);
-  sectionNode.size++;
-  char temp = (char)0xF;
-  sectionNode.data.push_back(temp);
-  sectionNode.size++;
-  location_counter += 2;
+  sectionNode.data.push_back((char)(0xE0)); 
+  sectionNode.data.push_back((char)(0xFF));
+  sectionNode.data.push_back((char)(0xFC));
+  sectionNode.size+=4;
+  location_counter+=4;
   return ret;
 }
 int Assembler::process_jmp_inst(smatch match)
@@ -1218,10 +1228,9 @@ int Assembler::push_inst_second(smatch match){
   assembler_help_file << "push: " << val << " location_counter: " << location_counter << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(PUSH); 
-  // ovo dole je od pre
-  //ali je opis inst isti samo je ovde bilo od 16b a sad od 32b
-  sectionNode.data.push_back((char)((val << 4) | 0xE)); //D -> sp
-  sectionNode.data.push_back(0x12); // 1 -> kaze vrv pokazuje na poslednju zauzetu pa treba da se uveca, 2 za registarski indirektno adresiranje
+  sectionNode.data.push_back((char)(0xE0)); 
+  sectionNode.data.push_back((char)((val << 4)));
+  sectionNode.data.push_back((char)0x4);
   sectionNode.size += 4;
   location_counter += 4;
   return ret;
@@ -1258,12 +1267,14 @@ int Assembler::pop_inst_second(smatch match){
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(POP);
   //ovaj ostatak je prepisan od prosle godine???
-  sectionNode.data.push_back((char)((val << 4) | 0xE)); //
-  sectionNode.data.push_back(0x42); // 4 treba da se pomeri negde, a 2 za nacin adresiranja to vidi sta je meni
+  sectionNode.data.push_back((char)(0xE0)); 
+  sectionNode.data.push_back((char)((val << 4) |0xF));
+  sectionNode.data.push_back((char)0xFC);
   sectionNode.size += 4;
   location_counter += 4;
   return ret;
 }
+
 int Assembler::process_xchg_inst(smatch match)
 {
   int ret = 0;
@@ -1834,7 +1845,13 @@ int Assembler::shr_inst_second(smatch match){
 int Assembler::process_ld_inst(smatch match)
 {
   int ret = 0;
-  location_counter+= 4; //ili zavisi od adresiranja?
+  if (current_section == "UND")
+  {
+    cout << "Ld instruction is not in a section" << endl
+         << "Error at line: " << this->current_line << endl;
+    return -1;
+  }
+  location_counter += 4;
   return ret;
 }
 int Assembler::ld_inst_second(smatch match){
@@ -1855,6 +1872,12 @@ int Assembler::ld_inst_second(smatch match){
 int Assembler::process_st_inst(smatch match)
 {
   int ret = 0;
+  if (current_section == "UND")
+  {
+    cout << "St instruction is not in a section" << endl
+         << "Error at line: " << this->current_line << endl;
+    return -1;
+  }
   location_counter += 4;
   return ret;
 }
@@ -1871,19 +1894,111 @@ int Assembler::st_inst_second(smatch match){
   return ret;
 }
 int Assembler::process_csrrd_inst(smatch match){
-  int ret = 0;
+   int ret = 0;
+  if (current_section == "UND")
+  {
+    cout << "Csrrd instruction is not in a section" << endl
+         << "Error at line: " << this->current_line << endl;
+    return -1;
+  }
+  location_counter += 4;
   return ret;
 }
 int Assembler::csrrd_inst_second(smatch match){
   int ret = 0;
+  string int_label = ((string)match[0]);
+  int val1 = 0;
+  int val2 = 0;
+  string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
+  string r1 = reg.substr(1, reg.find(",")-1);
+  string r2 = reg.substr(reg.find(",") + 1, reg.size());
+  if (r1 == "status")
+  {
+    val1 = 0;
+  } else if (r1 == "handler") {
+    val1 = 1;
+  }
+  else if (r1 == "cause")
+  {
+    val1 = 2;
+  } else {
+    cout << "Csrrd invalied control register " << r1 << endl
+         << "Error at line: " << this->current_line << endl;
+    return -1;
+  }
+  if (r2 == "pc")
+  {
+    val2 = 15;
+  } else if (r2 == "sp") {
+    val2 = 14;
+  }
+  else
+  {
+    r2.erase(0, 2);
+    val2 = stoi(r2);
+  }
+  assembler_help_file << "csrrd: csr: " << val1 << " i reg:" << val2 << endl;
+  SectionTableNode &sectionNode = sections.at(this->current_section);
+  sectionNode.data.push_back(CSRRD);
+  sectionNode.data.push_back((char)((val2 << 4) | val1));   
+  sectionNode.data.push_back((char)0);
+  sectionNode.data.push_back((char)0);
+  sectionNode.size += 4;
+  location_counter += 4;
   return ret;
 }
 int Assembler::process_csrwr_inst(smatch match){
-  int ret = 0;
+   int ret = 0;
+  if (current_section == "UND")
+  {
+    cout << "CSRW instruction is not in a section" << endl
+         << "Error at line: " << this->current_line << endl;
+    return -1;
+  }
+  location_counter += 4;
   return ret;
 }
 int Assembler::csrwr_inst_second(smatch match){
   int ret = 0;
+  string int_label = ((string)match[0]);
+  int val1 = 0;
+  int val2 = 0;
+  string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
+  string r1 = reg.substr(0, reg.find(","));
+  string r2 = reg.substr(reg.find(",") + 2, reg.size());
+  if (r2 == "status")
+  {
+    val2 = 0;
+  } else if (r2 == "handler") {
+    val2 = 1;
+  }
+  else if (r2 == "cause")
+  {
+    val2 = 2;
+  } else {
+    cout << "Csrrw invalied control register " << r2 << endl
+         << "Error at line: " << this->current_line << endl;
+    return -1;
+  }
+  if (r1 == "pc")
+  {
+    val1 = 15;
+  } else if (r1 == "sp") {
+    val1 = 14;
+  }
+  else
+  {
+    r1.erase(0, 2);
+    val1 = stoi(r1);
+  }
+  assembler_help_file << "csrwr: csr " << val1 << " i reg " << val2 << endl;
+  SectionTableNode &sectionNode = sections.at(this->current_section);
+  sectionNode.data.push_back(CSRWR);
+  sectionNode.data.push_back((char)((val1 << 4) | val2));   
+  sectionNode.data.push_back((char)0);
+  sectionNode.data.push_back((char)0);
+  sectionNode.size += 4;
+  location_counter += 4;
   return ret;
 }
 int Assembler::process_operand(string operand, bool load_store)

@@ -67,12 +67,12 @@ enum INSTRUCTIONS{
   BGT = 0x33,
   LD = 0x80,
   ST = 0x90,
-  CSRRD = LD,
-  CSRWR = ST,
+  CSRRD = 0x90,
+  CSRWR = 0x94,
   RET,
   IRET,
-  PUSH,
-  POP
+  PUSH = 0x81,
+  POP = 0x81
 };
 
 
