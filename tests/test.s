@@ -14,6 +14,12 @@ mul pc, %r7
 beq %r1, %r2, destinations
 csrwr %r1, %handler
 csrrd %status, %r3
+push %r1
+push %r2
+finish:
+pop %r2
+pop %r1
+iret
 
 destinations:
 .word mathAdd

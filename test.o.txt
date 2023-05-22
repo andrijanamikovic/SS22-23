@@ -18,26 +18,32 @@ beq: 1 , 2 , destinations
 Jump absolute operand: estinations
 csrwr: csr 1 i reg 1
 csrrd: csr: 0 i reg:3
+push: 1 location_counter: 28
+push: 2 location_counter: 32
+pop: 2 location_counter: 36
+pop: 1 location_counter: 40
+Iret in section:  my_code with size: 44
 Posle upisa: 
 
 Relocation table
 Symbol_id Symbol_name  Section_id type addend value
-15 estinations 0  0  27
-1 mathAdd 1  0  31
-4 mathDiv 1  0  34
-3 mathMul 1  0  33
-2 mathSub 1  0  32
+16 estinations 0  0  33
+1 mathAdd 1  0  43
+4 mathDiv 1  0  46
+3 mathMul 1  0  45
+2 mathSub 1  0  44
 
 Section table: 
 Section_id Section_name  Section_address Section_size Data_len
-1  my_code 0  44 35 
+1  my_code 0  68 59 
 0 UND 0  0 0 
 
 Symbol table: 
 Symbol_id Symbol_name  Section_id Section_name defined local extern
 13  my_code 1    1 1  0
-14 destinations 1   my_code  1 1  0
-15 estinations 0  UND  0 1  0
+15 destinations 1   my_code  1 1  0
+16 estinations 0  UND  0 1  0
+14 finish 1   my_code  1 1  0
 1 mathAdd 1   my_code  0 0  1
 4 mathDiv 1   my_code  0 0  1
 3 mathMul 1   my_code  0 0  1
@@ -53,8 +59,8 @@ Symbol_id Symbol_name  Section_id Section_name defined local extern
 
 Relocation table
 Symbol_id Symbol_name  Section_id type addend value
-15 estinations 0  0  27
-1 mathAdd 1  0  31
-4 mathDiv 1  0  34
-3 mathMul 1  0  33
-2 mathSub 1  0  32
+16 estinations 0  0  33
+1 mathAdd 1  0  43
+4 mathDiv 1  0  46
+3 mathMul 1  0  45
+2 mathSub 1  0  44

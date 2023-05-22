@@ -922,13 +922,13 @@ int Assembler::iret_inst_second(smatch match){
   // pop pc;
   sectionNode.data.push_back(POP);
   sectionNode.data.push_back((char)(0xE0)); 
-  sectionNode.data.push_back((char)(0xFF));
-  sectionNode.data.push_back((char)(0xFC));
+  sectionNode.data.push_back((char)(0xF0));
+  sectionNode.data.push_back((char)(0x04));
   // pop status;
   sectionNode.data.push_back((char)0x97);
   sectionNode.data.push_back((char)(0x0E));
-  sectionNode.data.push_back((int)(0x0F));
-  sectionNode.data.push_back((char)(0xFC));
+  sectionNode.data.push_back((int)(0x00));
+  sectionNode.data.push_back((char)(0x04));
   
   sectionNode.size+= 8;
   return ret;
@@ -991,8 +991,8 @@ int Assembler::ret_inst_second(smatch match) {
   // ret = pop pc;
   sectionNode.data.push_back(POP);
   sectionNode.data.push_back((char)(0xE0)); 
-  sectionNode.data.push_back((char)(0xFF));
-  sectionNode.data.push_back((char)(0xFC));
+  sectionNode.data.push_back((char)(0xF0));
+  sectionNode.data.push_back((char)(0x04));
   sectionNode.size+=4;
   location_counter+=4;
   return ret;
@@ -1229,8 +1229,8 @@ int Assembler::push_inst_second(smatch match){
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(PUSH); 
   sectionNode.data.push_back((char)(0xE0)); 
-  sectionNode.data.push_back((char)((val << 4)));
-  sectionNode.data.push_back((char)0x4);
+  sectionNode.data.push_back((char)((val << 4) | 0xF));
+  sectionNode.data.push_back((char)0xFC);
   sectionNode.size += 4;
   location_counter += 4;
   return ret;
@@ -1268,8 +1268,8 @@ int Assembler::pop_inst_second(smatch match){
   sectionNode.data.push_back(POP);
   //ovaj ostatak je prepisan od prosle godine???
   sectionNode.data.push_back((char)(0xE0)); 
-  sectionNode.data.push_back((char)((val << 4) |0xF));
-  sectionNode.data.push_back((char)0xFC);
+  sectionNode.data.push_back((char)((val << 4)));
+  sectionNode.data.push_back((char)0x04);
   sectionNode.size += 4;
   location_counter += 4;
   return ret;
