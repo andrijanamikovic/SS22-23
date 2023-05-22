@@ -7,9 +7,11 @@
 
 .section my_code
 my_start:
-add r0, r1
+add %r2, %r1
 .skip 2 # isr_error
-sub r13, r12
+sub %r13, %r12
+mul pc, %r7
+beq %r1, %r2, destinations
 
 destinations:
 .word mathAdd

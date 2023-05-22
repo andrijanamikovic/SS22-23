@@ -11,26 +11,31 @@
 .global symbol_name: value5 location counter: 0 section: UND
 .global symbol_name: value6 location counter: 0 section: UND
 End of section: UND with size: 0
-add: 0 + 1
+add: 2 + 1
 sub: 13 - 12
+mul: 15 * 7
+beq: 1 , 2 , destinations
+Jump absolute operand: estinations
 Posle upisa: 
 
 Relocation table
 Symbol_id Symbol_name  Section_id type addend value
-1 mathAdd 1  0  23
-4 mathDiv 1  0  26
-3 mathMul 1  0  25
-2 mathSub 1  0  24
+15 estinations 0  0  25
+1 mathAdd 1  0  27
+4 mathDiv 1  0  30
+3 mathMul 1  0  29
+2 mathSub 1  0  28
 
 Section table: 
 Section_id Section_name  Section_address Section_size Data_len
-1  my_code 0  20 12 
+1  my_code 0  36 27 
 0 UND 0  0 0 
 
 Symbol table: 
 Symbol_id Symbol_name  Section_id Section_name defined local extern
 13  my_code 1    1 1  0
 14 destinations 1   my_code  1 1  0
+15 estinations 0  UND  0 1  0
 1 mathAdd 1   my_code  0 0  1
 4 mathDiv 1   my_code  0 0  1
 3 mathMul 1   my_code  0 0  1
@@ -46,7 +51,8 @@ Symbol_id Symbol_name  Section_id Section_name defined local extern
 
 Relocation table
 Symbol_id Symbol_name  Section_id type addend value
-1 mathAdd 1  0  23
-4 mathDiv 1  0  26
-3 mathMul 1  0  25
-2 mathSub 1  0  24
+15 estinations 0  0  25
+1 mathAdd 1  0  27
+4 mathDiv 1  0  30
+3 mathMul 1  0  29
+2 mathSub 1  0  28

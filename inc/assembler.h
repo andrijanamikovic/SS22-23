@@ -111,7 +111,7 @@ class Assembler {
     int csrrd_inst_second(smatch match);
     int csrwr_inst_second(smatch match);
 
-    int process_operand(string operand,string reg, bool load_store);
+    int process_operand(string operand, bool load_store);
     void printSymbolTable();
     void printRelocationTable();
     void printSectionTable();
