@@ -1,66 +1,39 @@
-.extern symbol_name: mathAdd location counter: 0 section: UND
-.extern symbol_name: mathSub location counter: 0 section: UND
-.extern symbol_name: mathMul location counter: 0 section: UND
-.extern symbol_name: mathDiv location counter: 0 section: UND
-.global symbol_name: my_start location counter: 0 section: UND
-.global symbol_name: value0 location counter: 0 section: UND
-.global symbol_name: value1 location counter: 0 section: UND
-.global symbol_name: value2 location counter: 0 section: UND
-.global symbol_name: value3 location counter: 0 section: UND
-.global symbol_name: value4 location counter: 0 section: UND
-.global symbol_name: value5 location counter: 0 section: UND
-.global symbol_name: value6 location counter: 0 section: UND
 End of section: UND with size: 0
-add: 2 + 1
-sub: 13 - 12
-mul: 15 * 7
-beq: 1 , 2 , destinations
-Jump absolute operand: estinations
-csrwr: csr 1 i reg 1
-csrrd: csr: 0 i reg:3
-push: 1 location_counter: 28
-push: 2 location_counter: 32
-pop: 2 location_counter: 36
-pop: 1 location_counter: 40
-Iret in section:  my_code with size: 44
+.end 
+str sa operandom: my_counter and reg%r1
+Store memory direct: 
+str sa operandom: %r12 and reg%r4
+Store reg direct: 4, 12
+str sa operandom: [%r12] and reg%r4
+Store registar indirect operand: %r12]
+ld sa operandom %r2
+Load reg direct operand: %r2
+ld sa operandom [%r12]
+Load registar indirect : %r12] , 4
+ld sa operandom [%r12 + 15]
+Load registar indirect with disp: 15
+ld sa operandom [%r12 + my_counter]
+Jump absolute operand: my_counter
+Load registar indirect with disp: my_counter
+ld sa operandom $3
+Load memory apsolut : 3
+ld sa operandom 0xF3
+Load memory direct: 0
+.end of section:  my_data with size: 36
 Posle upisa: 
 
 Relocation table
 Symbol_id Symbol_name  Section_id type addend value
-16 estinations 0  0  33
-1 mathAdd 1  0  43
-4 mathDiv 1  0  46
-3 mathMul 1  0  45
-2 mathSub 1  0  44
 
 Section table: 
 Section_id Section_name  Section_address Section_size Data_len
-1  my_code 0  68 59 
+1  my_data 0  36 31 
 0 UND 0  0 0 
 
 Symbol table: 
 Symbol_id Symbol_name  Section_id Section_name defined local extern
-13  my_code 1    1 1  0
-15 destinations 1   my_code  1 1  0
-16 estinations 0  UND  0 1  0
-14 finish 1   my_code  1 1  0
-1 mathAdd 1   my_code  0 0  1
-4 mathDiv 1   my_code  0 0  1
-3 mathMul 1   my_code  0 0  1
-2 mathSub 1   my_code  0 0  1
-5 my_start 1   my_code  1 0  0
-6 value0 0  UND  0 0  0
-7 value1 0  UND  0 0  0
-8 value2 0  UND  0 0  0
-9 value3 0  UND  0 0  0
-10 value4 0  UND  0 0  0
-11 value5 0  UND  0 0  0
-12 value6 0  UND  0 0  0
+1  my_data 1    1 1  0
+2 my_isr_terminal 1   my_data  1 1  0
 
 Relocation table
 Symbol_id Symbol_name  Section_id type addend value
-16 estinations 0  0  33
-1 mathAdd 1  0  43
-4 mathDiv 1  0  46
-3 mathMul 1  0  45
-2 mathSub 1  0  44

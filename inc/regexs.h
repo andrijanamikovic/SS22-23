@@ -75,11 +75,11 @@ public:
   regex sym_regex = regex(symbol_regex);
   regex lit_regex = regex(literal_regex);
 
-  regex absolute_operand_regex = regex("(^\\$" + literal_regex + "|" + symbol_regex + ")$");
+  regex absolute_operand_regex = regex("^\\$(" +literal_regex + "|" + symbol_regex + ")$");
   regex memory_direct_operand_regex = regex("^(" + literal_regex + "|" + symbol_regex + ")$");
-  regex reg_dir_regex = regex("^(\\%"+register_regex+")$");
-  regex register_absolute_operand_regex = regex("(^\\[\\%" + register_regex + "\\])");
-  regex register_relative_operand_regex = regex("(^\\[\\%" + register_regex + " \\+ (" + symbol_regex + "|" + literal_regex + ")\\])$");
+  regex reg_dir_regex = regex("^("+register_regex+")$");
+  regex register_absolute_operand_regex = regex("(^\\[" + register_regex + "\\])$");
+  regex register_relative_operand_regex = regex("(^\\[" + register_regex + " \\+ (" + symbol_regex + "|" + literal_regex + ")\\])$");
   // string operand_regex = absolute_operand_regex + "|" + memory_direct_operand_regex + "|" + pc_relative_operand_regex  + "|" + reg_dir_regex + "|" + register_absolute_operand_regex + "|" + register_relative_operand_regex;
   
   // //-----------------------------------------------Jump----------------------------------------------------------

@@ -117,23 +117,24 @@ int Assembler::process()
   return this->process_second_pass();
 }
 
-int Assembler::process_second_pass(){
+int Assembler::process_second_pass()
+{
   int ret = 0;
-  for (string line : lines) {
+  for (string line : lines)
+  {
     if (this->end)
       break;
     this->current_line++;
     smatch match;
-    if (!regex_search(line, match, rx.only_label) and !regex_search(line, match, rx.label_with_data)){
-       int ret = this->process_command(line, false);
+    if (!regex_search(line, match, rx.only_label) and !regex_search(line, match, rx.label_with_data))
+    {
+      int ret = this->process_command(line, false);
       if (ret < 0)
         return ret;
     }
   }
   return ret;
 }
-
-
 
 int Assembler::process_label(string label)
 {
@@ -218,7 +219,7 @@ int Assembler::process_command(string command, bool first)
   }
   else if (regex_search(command, match, rx.ascii_dir))
   {
-    if(first)
+    if (first)
       ret = process_ascii_dir(match);
     else
       ret = ascii_dir_second(match);
@@ -290,7 +291,7 @@ int Assembler::process_command(string command, bool first)
   {
     if (first)
       ret = process_bgt_inst(match);
-    else  
+    else
       ret = bgt_inst_second(match);
   }
   else if (regex_search(command, match, rx.push_inst))
@@ -309,7 +310,7 @@ int Assembler::process_command(string command, bool first)
   }
   else if (regex_search(command, match, rx.xchg_inst))
   {
-    if (first)  
+    if (first)
       ret = process_xchg_inst(match);
     else
       ret = xchg_inst_second(match);
@@ -585,11 +586,12 @@ int Assembler::process_word_dir(smatch match)
   SectionTableNode &sectionNode = sections.at(this->current_section);
   string word_label = ((string)match[0]);
   list<string> symbol_list = this->split(word_label.substr(word_label.find(" ") + 1, word_label.size()), ",");
-  this->location_counter = this->location_counter + symbol_list.size()*4; // uvec za alociran prostor sa word
+  this->location_counter = this->location_counter + symbol_list.size() * 4; // uvec za alociran prostor sa word
   return ret;
 }
 
-int Assembler::word_dir_second(smatch match){
+int Assembler::word_dir_second(smatch match)
+{
   SectionTableNode &sectionNode = sections.at(this->current_section);
   string word_label = ((string)match[0]);
   list<string> symbol_list = this->split(word_label.substr(word_label.find(" ") + 1, word_label.size()), ",");
@@ -608,9 +610,9 @@ int Assembler::word_dir_second(smatch match){
     }
     else if (regex_match(s, rx.hex))
     {
-      int dataInt = stoi(s, 0, 32) & 0xFFFFFFFF;
+      int dataInt = stoi(s, 0, 16) & 0xFFFFFFFF;
       sectionNode.data.push_back((int)dataInt);
-      dataInt = (stoi(s, 0, 32) >> 16) & 0xFFFF0000;
+      dataInt = (stoi(s, 0, 16) >> 16) & 0xFFFF0000;
       sectionNode.data.push_back((int)dataInt);
       assembler_help_file << "Word directive with hex number: " << s << "location_counter"
                           << " : " << location_counter << endl;
@@ -694,30 +696,31 @@ int Assembler::process_skip_dir(smatch match)
   SectionTableNode &sectionNode = sections.at(this->current_section);
   if (regex_match(skip_val, rx.integer))
   {
-    location_counter += stoi(skip_val, 0, 32);
+    location_counter += stoi(skip_val, 0, 16);
     assembler_help_file << "first pass .skip  with value: " << stoi(skip_val) << endl;
   }
   else if (regex_match(skip_val, rx.hex))
   {
-    location_counter += stoi(skip_val, 0, 32);
-    assembler_help_file << "first pass .skip  with value: " << stoi(skip_val, 0, 32) << endl;
+    location_counter += stoi(skip_val, 0, 16);
+    assembler_help_file << "first pass .skip  with value: " << stoi(skip_val, 0, 16) << endl;
   }
 
   return ret;
 }
 
-int Assembler::skip_dir_second(smatch match) {
+int Assembler::skip_dir_second(smatch match)
+{
   int ret = 0;
   string skip_label = ((string)match[0]);
   string skip_val = skip_label.substr(skip_label.find(" "), skip_label.size());
   skip_label = skip_label.substr(0, skip_label.find(" "));
-   SectionTableNode &sectionNode = sections.at(this->current_section);
+  SectionTableNode &sectionNode = sections.at(this->current_section);
   if (regex_match(skip_val, rx.integer))
   {
-    location_counter += stoi(skip_val, 0, 32);
-    sectionNode.size += stoi(skip_val, 0, 32);
+    location_counter += stoi(skip_val, 0, 16);
+    sectionNode.size += stoi(skip_val, 0, 16);
     assembler_help_file << "second pass .skip  with value: " << stoi(skip_val) << endl;
-    for (int i = 0; i <stoi(skip_val, 0, 32); i++)
+    for (int i = 0; i < stoi(skip_val, 0, 16); i++)
     {
       int temp = 0 & 0xFFFF;
       sectionNode.data.push_back(temp);
@@ -725,17 +728,16 @@ int Assembler::skip_dir_second(smatch match) {
   }
   else if (regex_match(skip_val, rx.hex))
   {
-    location_counter += stoi(skip_val, 0, 32);
-    sectionNode.size += stoi(skip_val, 0, 32);
-    assembler_help_file << "second pass .skip  with value: " << stoi(skip_val, 0, 32) << endl;
-    for (int i = 0; i < stoi(skip_val, 0, 32); i++)
+    location_counter += stoi(skip_val, 0, 16);
+    sectionNode.size += stoi(skip_val, 0, 16);
+    assembler_help_file << "second pass .skip  with value: " << stoi(skip_val, 0, 16) << endl;
+    for (int i = 0; i < stoi(skip_val, 0, 16); i++)
     {
       int temp = 0 & 0xFFFF;
       sectionNode.data.push_back(temp);
     }
   }
   return ret;
-
 }
 int Assembler::process_ascii_dir(smatch match)
 {
@@ -753,7 +755,8 @@ int Assembler::process_ascii_dir(smatch match)
   return ret;
 }
 
-int Assembler::ascii_dir_second(smatch match){
+int Assembler::ascii_dir_second(smatch match)
+{
   int ret = 0;
   string ascii = match.str(0);
   SectionTableNode &sectionNode = sections.at(this->current_section);
@@ -773,7 +776,8 @@ int Assembler::process_end_dir(smatch match)
   this->end = true;
   return ret;
 }
-int Assembler::end_dir_second(smatch match) {
+int Assembler::end_dir_second(smatch match)
+{
   // da proverim dal su svi definisani simboli
   int ret = 0;
   if (current_section != "")
@@ -828,12 +832,13 @@ int Assembler::process_halt_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
-  location_counter+= 4;
+  location_counter += 4;
 
   return ret;
 }
 
-int  Assembler::halt_inst_second(smatch match){
+int Assembler::halt_inst_second(smatch match)
+{
   int ret = 0;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   if (sections.find(this->current_section) != sections.end())
@@ -851,8 +856,8 @@ int  Assembler::halt_inst_second(smatch match){
   sectionNode.data.push_back(temp);
   sectionNode.data.push_back((char)0);
   sectionNode.data.push_back((int)0);
-  sectionNode.size+= 4;
-  location_counter+= 4;
+  sectionNode.size += 4;
+  location_counter += 4;
   return ret;
 }
 
@@ -874,21 +879,22 @@ int Assembler::process_int_inst(smatch match)
   // ld r15, r1
   // status mi je r0, cause mi je r2 handler mi je r1
   // da li ovo znaci da ja treba da maskiram prekide da bi se to izvrsilo atomicno
-  location_counter+= 4;
+  location_counter += 4;
   return ret;
 }
 
-int Assembler::int_inst_second(smatch match) {
+int Assembler::int_inst_second(smatch match)
+{
   int ret = 0;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   string int_label = ((string)match[0]);
 
-  assembler_help_file << "int "<< endl;
+  assembler_help_file << "int " << endl;
   sectionNode.data.push_back(INT);
   sectionNode.data.push_back((char)0);
   sectionNode.data.push_back((int)0);
-  sectionNode.size+= 4;
-  location_counter+= 4;
+  sectionNode.size += 4;
+  location_counter += 4;
   return ret;
 }
 int Assembler::process_iret_inst(smatch match)
@@ -900,11 +906,12 @@ int Assembler::process_iret_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
-  
+
   location_counter += 8;
   return ret;
 }
-int Assembler::iret_inst_second(smatch match){
+int Assembler::iret_inst_second(smatch match)
+{
   int ret = 0;
   SectionTableNode &sectionNode = sections.at(this->current_section);
 
@@ -921,7 +928,7 @@ int Assembler::iret_inst_second(smatch match){
   }
   // pop pc;
   sectionNode.data.push_back(POP);
-  sectionNode.data.push_back((char)(0xE0)); 
+  sectionNode.data.push_back((char)(0xE0));
   sectionNode.data.push_back((char)(0xF0));
   sectionNode.data.push_back((char)(0x04));
   // pop status;
@@ -929,8 +936,8 @@ int Assembler::iret_inst_second(smatch match){
   sectionNode.data.push_back((char)(0x0E));
   sectionNode.data.push_back((int)(0x00));
   sectionNode.data.push_back((char)(0x04));
-  
-  sectionNode.size+= 8;
+
+  sectionNode.size += 8;
   return ret;
 }
 int Assembler::process_call_inst(smatch match)
@@ -944,18 +951,18 @@ int Assembler::process_call_inst(smatch match)
   }
   location_counter += 4;
 
-
   return ret;
 }
-int Assembler::call_inst_second(smatch match){
+int Assembler::call_inst_second(smatch match)
+{
   int ret = 0;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back((char)CALL);
   sectionNode.data.push_back((char)0);
 
-  ret = process_operand(match.str(2), false); 
-  //ovde treba da obradim da mi operand stavlja u bazen literala
-  // i onda dips u najniza 12 bita do toga u bazenu literala
+  ret = process_symbol_disp(match.str(2));
+  // ovde treba da obradim da mi operand stavlja u bazen literala
+  //  i onda dips u najniza 12 bita do toga u bazenu literala
   sectionNode.size += 4;
   location_counter += 4;
   return ret;
@@ -970,12 +977,13 @@ int Assembler::process_ret_inst(smatch match)
     return -1;
   }
 
-  location_counter+= 4;
+  location_counter += 4;
   return ret;
 }
-int Assembler::ret_inst_second(smatch match) {
+int Assembler::ret_inst_second(smatch match)
+{
   int ret = 0;
-   if (sections.find(this->current_section) != sections.end())
+  if (sections.find(this->current_section) != sections.end())
   {
     SectionTableNode &current_section_node = sections.at(this->current_section);
     // current_section_node.size = current_section_node.data.size();
@@ -990,11 +998,11 @@ int Assembler::ret_inst_second(smatch match) {
   SectionTableNode &sectionNode = sections.at(this->current_section);
   // ret = pop pc;
   sectionNode.data.push_back(POP);
-  sectionNode.data.push_back((char)(0xE0)); 
+  sectionNode.data.push_back((char)(0xE0));
   sectionNode.data.push_back((char)(0xF0));
   sectionNode.data.push_back((char)(0x04));
-  sectionNode.size+=4;
-  location_counter+=4;
+  sectionNode.size += 4;
+  location_counter += 4;
   return ret;
 }
 int Assembler::process_jmp_inst(smatch match)
@@ -1006,20 +1014,21 @@ int Assembler::process_jmp_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
-  location_counter+= 4; 
+  location_counter += 4;
   return ret;
 }
-int Assembler::jmp_inst_second(smatch match) {
+int Assembler::jmp_inst_second(smatch match)
+{
   int ret = 0;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(JMP);
   sectionNode.data.push_back((char)0);
   assembler_help_file << ".jmp with operand: " << match.str(2) << endl;
-  ret = process_operand(match.str(2), false); 
-  //ovde treba da obradim da mi operand stavlja u bazen literala
-  // i onda dips u najniza 12 bita do toga u bazenu literala
-  sectionNode.size+=4;
-  location_counter+=4;
+  ret = process_symbol_disp(match.str(2));
+  // ovde treba da obradim da mi operand stavlja u bazen literala
+  //  i onda dips u najniza 12 bita do toga u bazenu literala
+  sectionNode.size += 4;
+  location_counter += 4;
   return ret;
 }
 int Assembler::process_beq_inst(smatch match)
@@ -1031,11 +1040,31 @@ int Assembler::process_beq_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
-  location_counter+= 4;
-  
+  location_counter += 4;
+
   return ret;
 }
-int Assembler::beq_inst_second(smatch match){
+
+int getRegNum(string r)
+{
+  int ret = 0;
+  if (r == "pc")
+  {
+    ret = 15;
+  }
+  else if (r == "sp")
+  {
+    ret = 14;
+  }
+  else
+  {
+    r.erase(0, 2); //%r
+    ret = stoi(r);
+  }
+  return ret;
+}
+int Assembler::beq_inst_second(smatch match)
+{
   int ret = 0;
   string int_label = ((string)match[0]);
   int val1 = 0;
@@ -1045,40 +1074,19 @@ int Assembler::beq_inst_second(smatch match){
   string r2 = reg.substr(reg.find(",") + 1, reg.find(","));
   string operand = reg.substr(reg.find(",") + 1, reg.size());
   operand = operand.substr(operand.find(",") + 1, operand.size());
-
-  if (r1 == "pc")
-  {
-    val1 = 15;
-  } else if (r1 == "sp") {
-    val1 = 14;
-  }
-  else
-  {
-    r1.erase(0, 2); //%r
-    val1 = stoi(r1);
-  }
-  if (r2 == "pc")
-  {
-    val2 = 15;
-  } else if (r2 == "sp") {
-    val2 = 14;
-  }
-  else
-  {
-    r2.erase(0, 2);
-    val2 = stoi(r2);
-  }
+  val1 = getRegNum(r1);
+  val2 = getRegNum(r2);
   assembler_help_file << "beq: " << val1 << " , " << val2 << " , " << operand << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(BEQ);
   sectionNode.data.push_back((char)(val1));
   sectionNode.data.push_back((char)(val1 << 4));
 
-  ret = process_operand(operand, false); 
+  ret = process_symbol_disp(match.str(2));
   // sad ovde treba u najnizih 12b da spakujem operand tj adresu, ili odstojanje od
-  // bazena literala gde se nalazi tacna adresa 
-  sectionNode.size+= 4;
-  location_counter+= 4;
+  // bazena literala gde se nalazi tacna adresa
+  sectionNode.size += 4;
+  location_counter += 4;
   return ret;
 }
 int Assembler::process_bne_inst(smatch match)
@@ -1090,11 +1098,12 @@ int Assembler::process_bne_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
-  location_counter+=4;
-  
+  location_counter += 4;
+
   return ret;
 }
-int Assembler::bne_inst_second(smatch match){
+int Assembler::bne_inst_second(smatch match)
+{
   int ret = 0;
   string int_label = ((string)match[0]);
   int val1 = 0;
@@ -1104,39 +1113,19 @@ int Assembler::bne_inst_second(smatch match){
   string r2 = reg.substr(reg.find(",") + 1, reg.find(","));
   string operand = reg.substr(reg.find(",") + 1, reg.size());
   operand = operand.substr(operand.find(",") + 1, operand.size());
-  if (r1 == "pc")
-  {
-    val1 = 15;
-  } else if (r1 == "sp") {
-    val1 = 14;
-  }
-  else
-  {
-    r1.erase(0, 2); //%r
-    val1 = stoi(r1);
-  }
-  if (r2 == "pc")
-  {
-    val2 = 15;
-  } else if (r2 == "sp") {
-    val2 = 14;
-  }
-  else
-  {
-    r2.erase(0, 2);
-    val2 = stoi(r2);
-  }
+  val1 = getRegNum(r1);
+  val2 = getRegNum(r2);
   assembler_help_file << "bne: " << val1 << " , " << val2 << " , " << operand << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(BNE);
   sectionNode.data.push_back((char)(val1));
   sectionNode.data.push_back((char)(val1 << 4));
 
-  ret = process_operand(operand, false);
+  ret = process_symbol_disp(match.str(2));
   // sad ovde treba u najnizih 12b da spakujem operand tj adresu, ili odstojanje od
-  // bazena literala gde se nalazi tacna adresa 
-  sectionNode.size+=4;
-  location_counter+=4;
+  // bazena literala gde se nalazi tacna adresa
+  sectionNode.size += 4;
+  location_counter += 4;
   return ret;
 }
 int Assembler::process_bgt_inst(smatch match)
@@ -1148,11 +1137,12 @@ int Assembler::process_bgt_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
-  location_counter+=4;
+  location_counter += 4;
 
   return ret;
 }
-int Assembler::bgt_inst_second(smatch match){
+int Assembler::bgt_inst_second(smatch match)
+{
   int ret = 0;
   string int_label = ((string)match[0]);
   int val1 = 0;
@@ -1162,39 +1152,19 @@ int Assembler::bgt_inst_second(smatch match){
   string r2 = reg.substr(reg.find(",") + 1, reg.find(","));
   string operand = reg.substr(reg.find(",") + 1, reg.size());
   operand = operand.substr(operand.find(",") + 1, operand.size());
-  if (r1 == "pc")
-  {
-    val1 = 15;
-  } else if (r1 == "sp") {
-    val1 = 14;
-  }
-  else
-  {
-    r1.erase(0, 2); //%r
-    val1 = stoi(r1);
-  }
-  if (r2 == "pc")
-  {
-    val2 = 15;
-  } else if (r2 == "sp") {
-    val2 = 14;
-  }
-  else
-  {
-    r2.erase(0, 2);
-    val2 = stoi(r2);
-  }
+  val1 = getRegNum(r1);
+  val2 = getRegNum(r2);
   assembler_help_file << "bgt: " << val1 << " , " << val2 << " , " << operand << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(BGT);
   sectionNode.data.push_back((char)(val1));
   sectionNode.data.push_back((char)(val1 << 4));
-  
-  ret = process_operand(operand, false);
+
+  ret = process_symbol_disp(operand);
   // sad ovde treba u najnizih 12b da spakujem operand tj adresu, ili odstojanje od
-  // bazena literala gde se nalazi tacna adresa 
-  sectionNode.size+= 4;
-  location_counter+= 4;
+  // bazena literala gde se nalazi tacna adresa
+  sectionNode.size += 4;
+  location_counter += 4;
   return ret;
 }
 int Assembler::process_push_inst(smatch match)
@@ -1206,29 +1176,20 @@ int Assembler::process_push_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
-  location_counter+= 4;
+  location_counter += 4;
   return ret;
 }
-int Assembler::push_inst_second(smatch match){
+int Assembler::push_inst_second(smatch match)
+{
   int ret = 0;
   string int_label = ((string)match[0]);
   int val = 0;
   string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
-  if (reg == "pc")
-  {
-    val = 15;
-  } else if (reg == "sp") {
-    val = 14;
-  }
-  else
-  {
-    reg.erase(0, 2);
-    val = stoi(reg);
-  }
+  val = getRegNum(reg);
   assembler_help_file << "push: " << val << " location_counter: " << location_counter << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
-  sectionNode.data.push_back(PUSH); 
-  sectionNode.data.push_back((char)(0xE0)); 
+  sectionNode.data.push_back(PUSH);
+  sectionNode.data.push_back((char)(0xE0));
   sectionNode.data.push_back((char)((val << 4) | 0xF));
   sectionNode.data.push_back((char)0xFC);
   sectionNode.size += 4;
@@ -1247,27 +1208,17 @@ int Assembler::process_pop_inst(smatch match)
   location_counter += 4;
   return ret;
 }
-int Assembler::pop_inst_second(smatch match){
+int Assembler::pop_inst_second(smatch match)
+{
   int ret = 0;
   string int_label = ((string)match[0]);
   int val = 0;
   string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
-  if (reg == "pc")
-  {
-    val = 15;
-  } else if (reg == "sp") {
-    val = 14;
-  }
-  else
-  {
-    reg.erase(0, 2);
-    val = stoi(reg);
-  }
+  val = getRegNum(reg);
   assembler_help_file << "pop: " << val << " location_counter: " << location_counter << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(POP);
-  //ovaj ostatak je prepisan od prosle godine???
-  sectionNode.data.push_back((char)(0xE0)); 
+  sectionNode.data.push_back((char)(0xE0));
   sectionNode.data.push_back((char)((val << 4)));
   sectionNode.data.push_back((char)0x04);
   sectionNode.size += 4;
@@ -1287,36 +1238,17 @@ int Assembler::process_xchg_inst(smatch match)
   location_counter += 4;
   return ret;
 }
-int Assembler::xchg_inst_second(smatch match){
+int Assembler::xchg_inst_second(smatch match)
+{
   int ret = 0;
-   string int_label = ((string)match[0]);
+  string int_label = ((string)match[0]);
   int val1 = 0;
   int val2 = 0;
   string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
   string r1 = reg.substr(0, reg.find(","));
   string r2 = reg.substr(reg.find(",") + 1, reg.size());
-  if (r1 == "pc")
-  {
-    val1 = 15;
-  } else if (r1 == "sp") {
-    val1 = 14;
-  }
-  else
-  {
-    r1.erase(0, 2);
-    val1 = stoi(r1);
-  }
-  if (r2 == "pc")
-  {
-    val2 = 15;
-  } else if (r2 == "sp") {
-    val2 = 14;
-  }
-  else
-  {
-    r2.erase(0, 2);
-    val2 = stoi(r2);
-  }
+  val1 = getRegNum(r1);
+  val2 = getRegNum(r2);
   assembler_help_file << "Xchg val1:  " << val1 << " val2: " << val2 << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(XCHG);
@@ -1339,46 +1271,25 @@ int Assembler::process_add_inst(smatch match)
   location_counter += 4;
   return ret;
 }
-int Assembler::add_inst_second(smatch match){
+int Assembler::add_inst_second(smatch match)
+{
   int ret = 0;
   string int_label = ((string)match[0]);
   int val1 = 0;
   int val2 = 0;
-  //moram da odvojim unapred slucaj kad je pc i sp
   string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
   string r1 = reg.substr(0, reg.find(","));
   string r2 = reg.substr(reg.find(",") + 1, reg.size());
-  if (r1 == "pc")
-  {
-    val1 = 15;
-  } else if (r1 == "sp") {
-    val1 = 14;
-  }
-  else
-  {
-    r1.erase(0, 2); //%r
-    val1 = stoi(r1);
-  }
-  if (r2 == "pc")
-  {
-    val2 = 15;
-  } else if (r2 == "sp") {
-    val2 = 14;
-  }
-  else
-  {
-    r2.erase(0, 2);
-    val2 = stoi(r2);
-  }
+  val1 = getRegNum(r1);
+  val2 = getRegNum(r2);
   assembler_help_file << "add: " << val1 << " + " << val2 << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(ADD);
-  sectionNode.data.push_back((char)((val2 << 4) | val2));   
+  sectionNode.data.push_back((char)((val2 << 4) | val2));
   sectionNode.data.push_back((char)((val1 << 4)));
   sectionNode.data.push_back((char)0);
   sectionNode.size += 4;
   location_counter += 4;
-  // cout << "Processing add " << val1 << " + " << val2 << endl;
   return ret;
 }
 int Assembler::process_sub_inst(smatch match)
@@ -1390,10 +1301,11 @@ int Assembler::process_sub_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
-  location_counter+= 2;
+  location_counter += 2;
   return ret;
 }
-int Assembler::sub_inst_second(smatch match){
+int Assembler::sub_inst_second(smatch match)
+{
   int ret = 0;
   string int_label = ((string)match[0]);
   int val1 = 0;
@@ -1401,33 +1313,12 @@ int Assembler::sub_inst_second(smatch match){
   string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
   string r1 = reg.substr(0, reg.find(","));
   string r2 = reg.substr(reg.find(",") + 1, reg.size());
-  // cout << "Registri su sub:  " << r1 << " " << r2 << endl;
-    if (r1 == "pc")
-  {
-    val1 = 15;
-  } else if (r1 == "sp") {
-    val1 = 14;
-  }
-  else
-  {
-    r1.erase(0, 2);
-    val1 = stoi(r1);
-  }
-  if (r2 == "pc")
-  {
-    val2 = 15;
-  } else if (r2 == "sp") {
-    val2 = 14;
-  }
-  else
-  {
-    r2.erase(0, 2);
-    val2 = stoi(r2);
-  }
+  val1 = getRegNum(r1);
+  val2 = getRegNum(r2);
   assembler_help_file << "sub: " << val1 << " - " << val2 << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(SUB);
-  sectionNode.data.push_back((char)((val2 << 4) | val2));   
+  sectionNode.data.push_back((char)((val2 << 4) | val2));
   sectionNode.data.push_back((char)((val1 << 4)));
   sectionNode.data.push_back((char)0);
   sectionNode.size += 4;
@@ -1443,10 +1334,11 @@ int Assembler::process_mul_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
-  location_counter+= 4;
+  location_counter += 4;
   return ret;
 }
-int Assembler::mul_inst_second(smatch match){
+int Assembler::mul_inst_second(smatch match)
+{
   int ret = 0;
   string int_label = ((string)match[0]);
   int val1 = 0;
@@ -1454,33 +1346,12 @@ int Assembler::mul_inst_second(smatch match){
   string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
   string r1 = reg.substr(0, reg.find(","));
   string r2 = reg.substr(reg.find(",") + 1, reg.size());
-  // cout << "Registri su mul: " << r1 << " " << r2 << endl;
-  if (r1 == "pc")
-  {
-    val1 = 15;
-  } else if (r1 == "sp") {
-    val1 = 14;
-  }
-  else
-  {
-    r1.erase(0, 2);
-    val1 = stoi(r1);
-  }
-  if (r2 == "pc")
-  {
-    val2 = 15;
-  } else if (r2 == "sp") {
-    val2 = 14;
-  }
-  else
-  {
-    r2.erase(0, 2);
-    val2 = stoi(r2);
-  }
+  val1 = getRegNum(r1);
+  val2 = getRegNum(r2);
   assembler_help_file << "mul: " << val1 << " * " << val2 << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(MUL);
-  sectionNode.data.push_back((char)((val2 << 4) | val2));   
+  sectionNode.data.push_back((char)((val2 << 4) | val2));
   sectionNode.data.push_back((char)((val1 << 4)));
   sectionNode.data.push_back((char)0);
   sectionNode.size += 4;
@@ -1499,7 +1370,8 @@ int Assembler::process_div_inst(smatch match)
   location_counter += 4;
   return ret;
 }
-int Assembler::div_inst_second(smatch match){
+int Assembler::div_inst_second(smatch match)
+{
   int ret = 0;
   string int_label = ((string)match[0]);
   int val1 = 0;
@@ -1507,33 +1379,12 @@ int Assembler::div_inst_second(smatch match){
   string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
   string r1 = reg.substr(0, reg.find(","));
   string r2 = reg.substr(reg.find(",") + 1, reg.size());
-  // cout << "Registri su div: " << r1 << " " << r2 << endl;
-    if (r1 == "pc")
-  {
-    val1 = 15;
-  } else if (r1 == "sp") {
-    val1 = 14;
-  }
-  else
-  {
-    r1.erase(0, 2);
-    val1 = stoi(r1);
-  }
-  if (r2 == "pc")
-  {
-    val2 = 15;
-  } else if (r2 == "sp") {
-    val2 = 14;
-  }
-  else
-  {
-    r2.erase(0, 2);
-    val2 = stoi(r2);
-  }
+  val1 = getRegNum(r1);
+  val2 = getRegNum(r2);
   assembler_help_file << "div: " << val1 << " / " << val2 << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(DIV);
-  sectionNode.data.push_back((char)((val2 << 4) | val2));   
+  sectionNode.data.push_back((char)((val2 << 4) | val2));
   sectionNode.data.push_back((char)((val1 << 4)));
   sectionNode.data.push_back((char)0);
   sectionNode.size += 4;
@@ -1552,22 +1403,13 @@ int Assembler::process_not_inst(smatch match)
   location_counter += 4;
   return ret;
 }
-int Assembler::not_inst_second(smatch match){
+int Assembler::not_inst_second(smatch match)
+{
   int ret = 0;
   string int_label = ((string)match[0]);
   int val = 0;
   string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
-  if (reg == "pc")
-  {
-    val = 15;
-  }else if (reg == "sp"){
-    val = 14;
-  }
-  else
-  {
-    reg.erase(0, 2);
-    val = stoi(reg);
-  }
+  val = getRegNum(reg);
   assembler_help_file << "not: " << val << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(NOT);
@@ -1590,40 +1432,21 @@ int Assembler::process_and_inst(smatch match)
   location_counter += 4;
   return ret;
 }
-int Assembler::and_inst_second(smatch match){
+int Assembler::and_inst_second(smatch match)
+{
   int ret = 0;
-   string int_label = ((string)match[0]);
+  string int_label = ((string)match[0]);
   int val1 = 0;
   int val2 = 0;
   string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
   string r1 = reg.substr(0, reg.find(" ") - 1);
   string r2 = reg.substr(reg.find(" ") + 1, reg.size());
-  if (r1 == "pc")
-  {
-    val1 = 15;
-  } else if (r1 == "sp") {
-    val1 = 14;
-  }
-  else
-  {
-    r1.erase(0, 2);
-    val1 = stoi(r1);
-  }
-  if (r2 == "pc")
-  {
-    val2 = 15;
-  } else if (r2 == "sp") {
-    val2 = 14;
-  }
-  else
-  {
-    r2.erase(0, 2);
-    val2 = stoi(r2);
-  }
+  val1 = getRegNum(r1);
+  val2 = getRegNum(r2);
   assembler_help_file << "and: " << val1 << " & " << val2 << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(AND);
-  sectionNode.data.push_back((char)((val2 << 4) | val2));   
+  sectionNode.data.push_back((char)((val2 << 4) | val2));
   sectionNode.data.push_back((char)((val1 << 4)));
   sectionNode.data.push_back((char)0);
   sectionNode.size += 4;
@@ -1642,7 +1465,8 @@ int Assembler::process_or_inst(smatch match)
   location_counter += 4;
   return ret;
 }
-int Assembler::or_inst_second(smatch match){
+int Assembler::or_inst_second(smatch match)
+{
   int ret = 0;
   string int_label = ((string)match[0]);
   int val1 = 0;
@@ -1650,33 +1474,12 @@ int Assembler::or_inst_second(smatch match){
   string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
   string r1 = reg.substr(0, reg.find(","));
   string r2 = reg.substr(reg.find(",") + 1, reg.size());
-  // cout << "Registri su or: " << r1 << " " << r2 << endl;
-  if (r1 == "pc")
-  {
-    val1 = 15;
-  } else if (r1 == "sp") {
-    val1 = 14;
-  }
-  else
-  {
-    r1.erase(0, 2);
-    val1 = stoi(r1);
-  }
-  if (r2 == "pc")
-  {
-    val2 = 15;
-  } else if (r2 == "sp") {
-    val2 = 14;
-  }
-  else
-  {
-    r2.erase(0, 2);
-    val2 = stoi(r2);
-  }
+  val1 = getRegNum(r1);
+  val2 = getRegNum(r2);
   assembler_help_file << "or: " << val1 << " | " << val2 << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(OR);
-  sectionNode.data.push_back((char)((val2 << 4) | val2));   
+  sectionNode.data.push_back((char)((val2 << 4) | val2));
   sectionNode.data.push_back((char)((val1 << 4)));
   sectionNode.data.push_back((char)0);
   sectionNode.size += 4;
@@ -1695,41 +1498,21 @@ int Assembler::process_xor_inst(smatch match)
   location_counter += 4;
   return ret;
 }
-int Assembler::xor_inst_second(smatch match){
+int Assembler::xor_inst_second(smatch match)
+{
   int ret = 0;
-   string int_label = ((string)match[0]);
+  string int_label = ((string)match[0]);
   int val1 = 0;
   int val2 = 0;
   string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
   string r1 = reg.substr(0, reg.find(","));
   string r2 = reg.substr(reg.find(",") + 1, reg.size());
-  // cout << "Registri su xor: " << r1 << " " << r2 << endl;
-  if (r1 == "pc")
-  {
-    val1 = 15;
-  } else if (r1 == "sp") {
-    val1 = 14;
-  }
-  else
-  {
-    r1.erase(0, 2);
-    val1 = stoi(r1);
-  }
-  if (r2 == "pc")
-  {
-    val2 = 15;
-  } else if (r2 == "sp") {
-    val2 = 14;
-  }
-  else
-  {
-    r2.erase(0, 2);
-    val2 = stoi(r2);
-  }
+  val1 = getRegNum(r1);
+  val2 = getRegNum(r2);
   assembler_help_file << "xor: " << val1 << " xor " << val2 << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(XOR);
-  sectionNode.data.push_back((char)((val2 << 4) | val2));   
+  sectionNode.data.push_back((char)((val2 << 4) | val2));
   sectionNode.data.push_back((char)((val1 << 4)));
   sectionNode.data.push_back((char)0);
   sectionNode.size += 4;
@@ -1748,7 +1531,8 @@ int Assembler::process_shl_inst(smatch match)
   location_counter += 4;
   return ret;
 }
-int Assembler::shl_inst_second(smatch match){
+int Assembler::shl_inst_second(smatch match)
+{
   int ret = 0;
   string int_label = ((string)match[0]);
   int val1 = 0;
@@ -1756,33 +1540,12 @@ int Assembler::shl_inst_second(smatch match){
   string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
   string r1 = reg.substr(0, reg.find(","));
   string r2 = reg.substr(reg.find(",") + 1, reg.size());
-  // cout << "Registri su shl: " << r1 << " " << r2 << endl;
-  if (r1 == "pc")
-  {
-    val1 = 15;
-  } else if (r1 == "sp") {
-    val1 = 14;
-  }
-  else
-  {
-    r1.erase(0, 2);
-    val1 = stoi(r1);
-  }
-  if (r2 == "pc")
-  {
-    val2 = 15;
-  } else if (r2 == "sp") {
-    val2 = 14;
-  }
-  else
-  {
-    r2.erase(0, 2);
-    val2 = stoi(r2);
-  }
+  val1 = getRegNum(r1);
+  val2 = getRegNum(r2);
   assembler_help_file << "shl: " << val1 << " + " << val2 << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(SHL);
-  sectionNode.data.push_back((char)((val2 << 4) | val2));   
+  sectionNode.data.push_back((char)((val2 << 4) | val2));
   sectionNode.data.push_back((char)((val1 << 4)));
   sectionNode.data.push_back((char)0);
   sectionNode.size += 4;
@@ -1801,7 +1564,8 @@ int Assembler::process_shr_inst(smatch match)
   location_counter += 4;
   return ret;
 }
-int Assembler::shr_inst_second(smatch match){
+int Assembler::shr_inst_second(smatch match)
+{
   int ret = 0;
   string int_label = ((string)match[0]);
   int val1 = 0;
@@ -1809,33 +1573,12 @@ int Assembler::shr_inst_second(smatch match){
   string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
   string r1 = reg.substr(0, reg.find(","));
   string r2 = reg.substr(reg.find(",") + 1, reg.size());
-  // cout << "Registri su shr: " << r1 << " " << r2 << endl;
-  if (r1 == "pc")
-  {
-    val1 = 15;
-  } else if (r1 == "sp") {
-    val1 = 14;
-  }
-  else
-  {
-    r1.erase(0, 2);
-    val1 = stoi(r1);
-  }
-  if (r2 == "pc")
-  {
-    val2 = 15;
-  } else if (r2 == "sp") {
-    val2 = 14;
-  }
-  else
-  {
-    r2.erase(0, 2);
-    val2 = stoi(r2);
-  }
+  val1 = getRegNum(r1);
+  val2 = getRegNum(r2);
   assembler_help_file << "shr: " << val1 << " + " << val2 << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(SHR);
-  sectionNode.data.push_back((char)((val2 << 4) | val2));   
+  sectionNode.data.push_back((char)((val2 << 4) | val2));
   sectionNode.data.push_back((char)((val1 << 4)));
   sectionNode.data.push_back((char)0);
   sectionNode.size += 4;
@@ -1854,14 +1597,17 @@ int Assembler::process_ld_inst(smatch match)
   location_counter += 4;
   return ret;
 }
-int Assembler::ld_inst_second(smatch match){
+int Assembler::ld_inst_second(smatch match)
+{
   int ret = 0;
   SectionTableNode &sectionNode = sections.at(this->current_section);
-  sectionNode.data.push_back(0x8);
-  sectionNode.size++;
-  string operand = match.str(1);
-  assembler_help_file << "ld sa operandom "  << operand << endl;
-  ret = process_operand(operand, false);
+  string operands = match.str(2);
+  string operand = operands.substr(0, operands.find(","));
+  string reg = operands.substr(operands.find(",") + 1, operands.size());
+  cout << "ld " << operand << ", " << reg << endl;
+  int val1 = getRegNum(reg);
+  assembler_help_file << "ld sa operandom " << operand << endl;
+  ret = process_operand(operand, val1, true);
   // cout << endl
   //      << operand << " ldr operand, ldr reg: " << endl
   //      << operand << endl
@@ -1881,20 +1627,25 @@ int Assembler::process_st_inst(smatch match)
   location_counter += 4;
   return ret;
 }
-int Assembler::st_inst_second(smatch match){
+int Assembler::st_inst_second(smatch match)
+{
   int ret = 0;
   SectionTableNode &sectionNode = sections.at(this->current_section);
-  sectionNode.data.push_back(0x9);
-  string operand = match.str(2);
-  assembler_help_file << "str sa operandom: " << operand << endl;
-  ret = process_operand(operand, true);
+  string operands = match.str(2);
+  string reg = operands.substr(0, operands.find(","));
+  string operand = operands.substr(operands.find(",") + 1, operands.size());
+  assembler_help_file << "str sa operandom: " << operand << " and reg" << reg << endl;
+  cout << "Store " << reg<< " , " << operand <<  endl;
+  int val = getRegNum(reg);
+  ret = process_operand(operand, val, false);
   // cout << endl
   //      << operand << " str operand, str reg: " << reg << endl;
   location_counter += 4;
   return ret;
 }
-int Assembler::process_csrrd_inst(smatch match){
-   int ret = 0;
+int Assembler::process_csrrd_inst(smatch match)
+{
+  int ret = 0;
   if (current_section == "UND")
   {
     cout << "Csrrd instruction is not in a section" << endl
@@ -1904,51 +1655,57 @@ int Assembler::process_csrrd_inst(smatch match){
   location_counter += 4;
   return ret;
 }
-int Assembler::csrrd_inst_second(smatch match){
+int getCssrRegNum(string reg)
+{
+  int val = 0;
+  if (reg == "status")
+  {
+    val = 0;
+  }
+  else if (reg == "handler")
+  {
+    val = 1;
+  }
+  else if (reg == "cause")
+  {
+    val = 2;
+  }
+  else
+  {
+    val = -1;
+  }
+  return val;
+}
+int Assembler::csrrd_inst_second(smatch match)
+{
   int ret = 0;
   string int_label = ((string)match[0]);
   int val1 = 0;
   int val2 = 0;
   string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
-  string r1 = reg.substr(1, reg.find(",")-1);
+  string r1 = reg.substr(1, reg.find(",") - 1);
   string r2 = reg.substr(reg.find(",") + 1, reg.size());
-  if (r1 == "status")
+  val1 = getCssrRegNum(r1);
+  if (val1 < 0)
   {
-    val1 = 0;
-  } else if (r1 == "handler") {
-    val1 = 1;
-  }
-  else if (r1 == "cause")
-  {
-    val1 = 2;
-  } else {
     cout << "Csrrd invalied control register " << r1 << endl
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
-  if (r2 == "pc")
-  {
-    val2 = 15;
-  } else if (r2 == "sp") {
-    val2 = 14;
-  }
-  else
-  {
-    r2.erase(0, 2);
-    val2 = stoi(r2);
-  }
+  val2 = getRegNum(r2);
   assembler_help_file << "csrrd: csr: " << val1 << " i reg:" << val2 << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(CSRRD);
-  sectionNode.data.push_back((char)((val2 << 4) | val1));   
+  sectionNode.data.push_back((char)((val2 << 4) | val1));
   sectionNode.data.push_back((char)0);
   sectionNode.data.push_back((char)0);
   sectionNode.size += 4;
   location_counter += 4;
   return ret;
 }
-int Assembler::process_csrwr_inst(smatch match){
-   int ret = 0;
+int Assembler::process_csrwr_inst(smatch match)
+{
+  int ret = 0;
   if (current_section == "UND")
   {
     cout << "CSRW instruction is not in a section" << endl
@@ -1958,7 +1715,8 @@ int Assembler::process_csrwr_inst(smatch match){
   location_counter += 4;
   return ret;
 }
-int Assembler::csrwr_inst_second(smatch match){
+int Assembler::csrwr_inst_second(smatch match)
+{
   int ret = 0;
   string int_label = ((string)match[0]);
   int val1 = 0;
@@ -1966,289 +1724,283 @@ int Assembler::csrwr_inst_second(smatch match){
   string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
   string r1 = reg.substr(0, reg.find(","));
   string r2 = reg.substr(reg.find(",") + 2, reg.size());
-  if (r2 == "status")
+  val2 = getCssrRegNum(r2);
+  if (val2 < 0)
   {
-    val2 = 0;
-  } else if (r2 == "handler") {
-    val2 = 1;
-  }
-  else if (r2 == "cause")
-  {
-    val2 = 2;
-  } else {
-    cout << "Csrrw invalied control register " << r2 << endl
+    cout << "Csrrd invalied control register " << r2 << endl
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
-  if (r1 == "pc")
-  {
-    val1 = 15;
-  } else if (r1 == "sp") {
-    val1 = 14;
-  }
-  else
-  {
-    r1.erase(0, 2);
-    val1 = stoi(r1);
-  }
+  val1 = getRegNum(r1);
   assembler_help_file << "csrwr: csr " << val1 << " i reg " << val2 << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(CSRWR);
-  sectionNode.data.push_back((char)((val1 << 4) | val2));   
+  sectionNode.data.push_back((char)((val1 << 4) | val2));
   sectionNode.data.push_back((char)0);
   sectionNode.data.push_back((char)0);
   sectionNode.size += 4;
   location_counter += 4;
   return ret;
 }
-int Assembler::process_operand(string operand, bool load_store)
+int Assembler::process_symbol_disp(string operand)
+{
+  // ovde treba da obradim da mi operand stavlja u bazen literala
+  //  i onda dips u najniza 12 bita do toga u bazenu literala
+  // ne povecavam section_size i location_counter za ovih 12b sto ostalo tj 2B al najvisa 4 su 0
+  // ali moram da vidim sta se desava sa bazenom literala
+  // ovo dole mi je kod od prosle za jmp mozda moze posluziti
+  int ret = 0;
+  smatch match;
+  if (regex_search(operand, match, rx.jump_absolute_operand_regex))
+  {
+    // char dataInt;
+    // SectionTableNode &sectionNode = sections.at(this->current_section);
+    // sectionNode.data.push_back(0xff);
+    // sectionNode.data.push_back(0x00);
+    // operand = operand.substr(1, operand.size());
+    // if (regex_match(operand, rx.integer))
+    // {
+    //   this->assembler_help_file << "Absolute operand: " << operand << endl;
+    //   dataInt = stoi(operand);
+    //   SectionTableNode &sectionNode = sections.at(this->current_section);
+    //   sectionNode.data.push_back((char)(dataInt >> 8));
+    //   sectionNode.data.push_back((char)dataInt);
+    // }
+    // else if (regex_match(operand, rx.hex))
+    // {
+    //   this->assembler_help_file << "Absolute operand hex: " << operand << endl;
+    //   dataInt = stoi(operand, 0, 16);
+    //   SectionTableNode &sectionNode = sections.at(this->current_section);
+    //   sectionNode.data.push_back((char)(dataInt >> 8));
+    //   sectionNode.data.push_back((char)dataInt);
+    // }
+    // else if (regex_match(operand, rx.sym_regex))
+    // {
+    //   // ako je simbol i nemam radim sta?
+    //   SectionTableNode &sectionNode = sections.at(this->current_section);
+    //   sectionNode.data.push_back(0x00);
+    //   sectionNode.data.push_back(0x00);
+    //   if (symbols.find(operand) == symbols.end())
+    //   {
+    //     // not defined symbol
+    //     SymbolTableNode *symbol = new SymbolTableNode(++this->_symbol_id, 0, true, false, false);
+    //     symbol->name = operand;
+    //     symbol->value = 0;
+    //     symbol->section_name = "UND";
+    //     symbol->type = "NOTYP";
+    //     symbol->offset = current_line;
+    //     symbols.insert({operand, *symbol});
+    //     // i treba da ga dodam u relokacionu tabelu?
+    //     RelocationTableNode *relocation_data = new RelocationTableNode(symbol->symbol_id, 0, symbol->name);
+    //     relocation_data->value = current_line;
+    //     relocation_data->type = "TYPE_16";
+    //     relocation_data->addend = 0;
+    //     relocation_data->offset = location_counter + 2;
+    //     relocations.insert({symbol->name, *relocation_data});
+    //   }
+    // }
+    // sectionNode.size += 4;
+    // location_counter += 4;
+    this->assembler_help_file << "Jump absolute operand: " << operand << endl;
+  }
+  else
+  {
+    cout << "Jump with error parsing" << endl;
+    ret = -1;
+  }
+  return ret;
+}
+
+int Assembler::process_operand(string operand, int reg, bool load_store)
 {
   smatch match;
   int ret = 0;
   switch (load_store)
   {
   case false:
-    if (regex_search(operand, match, rx.jump_absolute_operand_regex))
+    // st
+    if (regex_search(operand, match, rx.register_relative_operand_regex))
     {
+      int r = 0; // to nemam sad
       char dataInt;
+      cout << "St + registarsko indirektno sa disp" << match.str(0) << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
-      sectionNode.data.push_back(0xff);
-      sectionNode.data.push_back(0x00);
-      operand = operand.substr(1, operand.size());
-      if (regex_match(operand, rx.integer))
-      {
-        this->assembler_help_file << "Absolute operand: " << operand << endl;
-        dataInt = stoi(operand);
-        SectionTableNode &sectionNode = sections.at(this->current_section);
-        sectionNode.data.push_back((char)(dataInt >> 8));
-        sectionNode.data.push_back((char)dataInt);
-      }
-      else if (regex_match(operand, rx.hex))
-      {
-        this->assembler_help_file << "Absolute operand hex: " << operand << endl;
-        dataInt = stoi(operand, 0, 16);
-        SectionTableNode &sectionNode = sections.at(this->current_section);
-        sectionNode.data.push_back((char)(dataInt >> 8));
-        sectionNode.data.push_back((char)dataInt);
-      }
-      else if (regex_match(operand, rx.sym_regex))
-      {
-        // ako je simbol i nemam radim sta?
-        SectionTableNode &sectionNode = sections.at(this->current_section);
-        sectionNode.data.push_back(0x00);
-        sectionNode.data.push_back(0x00);
-        if (symbols.find(operand) == symbols.end())
-        {
-          // not defined symbol
-          SymbolTableNode *symbol = new SymbolTableNode(++this->_symbol_id, 0, true, false, false);
-          symbol->name = operand;
-          symbol->value = 0;
-          symbol->section_name = "UND";
-          symbol->type = "NOTYP";
-          symbol->offset = current_line;
-          symbols.insert({operand, *symbol});
-          // i treba da ga dodam u relokacionu tabelu?
-          RelocationTableNode *relocation_data = new RelocationTableNode(symbol->symbol_id, 0, symbol->name);
-          relocation_data->value = current_line;
-          relocation_data->type = "TYPE_16";
-          relocation_data->addend = 0;
-          relocation_data->offset = location_counter + 2;
-          relocations.insert({symbol->name, *relocation_data});
-        }
-      }
+      sectionNode.data.push_back((char)0x80);
+
+      operand = operand.substr(0, operand.size());
+
       sectionNode.size += 4;
-      location_counter += 4;
-      this->assembler_help_file << "Jump absolute operand: " << operand << endl;
+      this->assembler_help_file << "Store registar indirect with disp: " << operand << endl;
+    }
+    else if (regex_search(operand, match, rx.register_absolute_operand_regex))
+    {
+      int r = 0; // to nemam sad
+      string operand = match.str(0);
+      operand = operand.substr(1, operand.size()-1);
+      r = getRegNum(operand);
+      cout << "St + registarsko apsolutno operand" << r << endl;
+      SectionTableNode &sectionNode = sections.at(this->current_section);
+      sectionNode.data.push_back((char)0x80);
+      sectionNode.data.push_back((char)r);
+      sectionNode.data.push_back((char)(reg << 4));
+      sectionNode.data.push_back((char)0);
+
+      this->assembler_help_file << "Store registar indirect operand: " << operand << endl;
+      sectionNode.size += 4;
+    }
+    else if (regex_search(operand, match, rx.reg_dir_regex))
+    {
+      int r = 0;  
+      r = getRegNum(match.str(0));
+      cout << "St + regdir"  << reg << ", " << r <<  endl;
+      SectionTableNode &sectionNode = sections.at(this->current_section);
+      sectionNode.data.push_back((char)0x91);
+      sectionNode.data.push_back((char)((r << 4) | reg));
+      sectionNode.data.push_back((char)0);
+      sectionNode.data.push_back((char)0);
+      sectionNode.size += 4;
+      this->assembler_help_file << "Store reg direct: " << reg << ", " << r << endl;
+    }
+    else if (regex_search(operand, match, rx.absolute_operand_regex))
+    {
+      cout << "Store + immediate error" << endl;
+      ret = -1;
+    }
+    else if (regex_search(operand, match, rx.memory_direct_operand_regex))
+    {
+      //[r0]
+      int r = 0;
+      int r2 = 0;
+      cout << "St + memorijsko direktno" << match.str(0) << endl;
+      // nemaju ova 2 poslata odmah
+      SectionTableNode &sectionNode = sections.at(this->current_section);
+      sectionNode.data.push_back((char)0x80);
+
+      sectionNode.size += 4;
+      this->assembler_help_file << "Store memory direct: " << endl;
     }
     else
     {
-      cout << "Jump with error parsing" << endl;
+      cout << "Store with error parsing" << endl;
       ret = -1;
     }
     break;
 
   case true:
-    if (regex_search(operand, match, rx.memory_direct_operand_regex))
+    // ld
+    if (regex_search(operand, match, rx.register_relative_operand_regex))
     {
-      int r = 0; //to nemam sad    
-      char dataInt;
+      int r = 0; 
+      string operand = match.str(0);
+      smatch match2;
+      bool literal =  false;
+      //izvucem iz [%r13 + operand] registar i operand
+      // broj registra odmah kodiram pa operand saljem na onaj process
+      if (regex_search(operand, match2, rx.reg_regex)) {
+        r = getRegNum(match2.str(0));
+      }
+      operand = operand.substr(operand.find("+"), operand.size());
+      if (regex_search(operand, match2, rx.lit_regex)){
+          literal = true;
+          operand = match2.str(0);
+      } else if (regex_search(operand, match2, rx.sym_regex)){
+          operand = match2.str(0);
+      }
+      cout << "Ld + registarsko indirektno sa disp" << match.str(0) << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
-      sectionNode.data.push_back((char)((r << 4) | 0xf));
-      sectionNode.data.push_back(0x04);
-      operand = operand.substr(0, operand.size());
-      if (regex_match(operand, rx.integer))
-      {
-        this->assembler_help_file << "Memmory operand: " << operand << endl;
-        dataInt = stoi(operand);
-        sectionNode.data.push_back((char)(dataInt >> 8));
-        sectionNode.data.push_back((char)dataInt);
-      }
-      else if (regex_match(operand, rx.hex))
-      {
-        this->assembler_help_file << "Memmory operand hex: " << operand << endl;
-        dataInt = stoi(operand, 0, 16);
-        sectionNode.data.push_back((char)(dataInt >> 8));
-        sectionNode.data.push_back((char)dataInt);
-      }
-      else if (regex_match(operand, rx.sym_regex))
-      {
-        // ako je simbol i nemam radim sta?
-        sectionNode.data.push_back(0x00);
-        sectionNode.data.push_back(0x00);
-        if (symbols.find(operand) == symbols.end())
-        {
-          // not defined symbol
-          SymbolTableNode *symbol = new SymbolTableNode(++this->_symbol_id, this->_section_id, true, false, false);
-          symbol->name = operand;
-          symbol->value = 0;
-          symbol->section_name = this->current_section;
-          symbol->offset = current_line;
-          symbols.insert({operand, *symbol});
-          // i treba da ga dodam u relokacionu tabelu?
-          RelocationTableNode *relocation_data = new RelocationTableNode(symbol->symbol_id, symbol->section_id, symbol->name);
-          relocation_data->value = current_line;
-          relocation_data->addend = 0;
-          relocations.insert({symbol->name, *relocation_data});
-        }
+      sectionNode.data.push_back((char)0x92);
+      sectionNode.data.push_back((char)((reg << 4) | r));
+      if (literal) {
+        sectionNode.data.push_back((char) ((stoi(operand) >> 8) & 0xFF));
+        sectionNode.data.push_back((char) (stoi(operand) & 0xFF));
+      } else {
+        ret = process_symbol_disp(operand);
       }
       sectionNode.size += 4;
-      location_counter += 4;
-      this->assembler_help_file << "Load/store memory direct operand: " << operand << endl;
+      this->assembler_help_file << "Load registar indirect with disp: " << operand << endl;
     }
-    else if (regex_search(operand, match, rx.absolute_operand_regex))
+    else if (regex_search(operand, match, rx.register_absolute_operand_regex))
     {
-      int r = 0; //to nemam sad
-      char dataInt;
+      int r = 0; // to nemam sad
+      cout << "Ld + registarsko apsolutno operand" << match.str(0) << endl;
+      string operand = match.str(0);
+      operand = operand.substr(1, operand.size()-1);
+      r = getRegNum(operand);
       SectionTableNode &sectionNode = sections.at(this->current_section);
-      sectionNode.data.push_back((char)((r << 4) | 0xf));
-      sectionNode.data.push_back(0x00);
-      operand = operand.substr(1, operand.size());
-      if (regex_match(operand, rx.integer))
-      {
-        this->assembler_help_file << "Absolute operand: " << operand << endl;
-        dataInt = stoi(operand);
-        sectionNode.data.push_back((char)(dataInt >> 8));
-        sectionNode.data.push_back((char)dataInt);
-      }
-      else if (regex_match(operand, rx.hex))
-      {
-        this->assembler_help_file << "Absolute operand hex: " << operand << endl;
-        dataInt = stoi(operand, 0, 16);
-        sectionNode.data.push_back((char)(dataInt >> 8));
-        sectionNode.data.push_back((char)dataInt);
-      }
-      else if (regex_match(operand, rx.sym_regex))
-      {
-        // ako je simbol i nemam radim sta?
-        sectionNode.data.push_back(0x00);
-        sectionNode.data.push_back(0x00);
-        if (symbols.find(operand) == symbols.end())
-        {
-          // not defined symbol
-          SymbolTableNode *symbol = new SymbolTableNode(++this->_symbol_id, this->_section_id, true, false, false);
-          symbol->name = operand;
-          symbol->value = 0;
-          symbol->section_name = this->current_section;
-          symbol->offset = current_line;
-          symbols.insert({operand, *symbol});
-          // i treba da ga dodam u relokacionu tabelu?
-          RelocationTableNode *relocation_data = new RelocationTableNode(symbol->symbol_id, symbol->section_id, symbol->name);
-          relocation_data->value = current_line;
-          relocation_data->addend = 0;
-          relocations.insert({symbol->name, *relocation_data});
-        }
-      }
-      this->assembler_help_file << "Load/store absolute operand: " << operand << endl;
-      location_counter += 4;
+      sectionNode.data.push_back((char)0x92);
+      sectionNode.data.push_back((char)((reg << 4) | r));
+      sectionNode.data.push_back((char)0);
+      sectionNode.data.push_back((char)0);
+      this->assembler_help_file << "Load registar indirect : " << operand << " , " << reg << endl;
       sectionNode.size += 4;
     }
     else if (regex_search(operand, match, rx.reg_dir_regex))
     {
-      int r = 0; //to nemam sad
-      int r2 = 0; //nemam 
+      int r = 0;  
+      r = getRegNum(match.str(0));
+      cout << "Ld + regdir" << r << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
-      sectionNode.data.push_back((char)((r2 << 4) | r));
-      sectionNode.data.push_back(0x01);
-      sectionNode.size += 2;
-
-      location_counter += 2;
-      this->assembler_help_file << "Load/store reg direct operand: " << operand << endl;
+      sectionNode.data.push_back((char)0x91);
+      sectionNode.data.push_back((char)((reg << 4) | r));
+      sectionNode.data.push_back((char)0);
+      sectionNode.data.push_back((char)0);
+      sectionNode.size += 4;
+      this->assembler_help_file << "Load reg direct operand: " << operand << endl;
     }
-    else if (regex_search(operand, match, rx.register_relative_operand_regex))
+    else if (regex_search(operand, match, rx.absolute_operand_regex))
     {
-      // location_counter += 2;
-      int reg = 0;
       smatch match2;
-      string reg2;
-      if (regex_search(operand, match2, rx.reg_regex))
-      {
-        reg2 = match2.str(1);
+      bool literal =  false;
+      string operand = match.str(0);
+      operand = operand.substr(1, operand.size());
+      if (regex_search(operand, match2, rx.lit_regex)){
+          literal = true;
+          operand = match2.str(0);
+      } else if (regex_search(operand, match2, rx.sym_regex)){
+          operand = match2.str(0);
       }
-      string displacment = operand.substr(operand.find("+") + 2, operand.size());
-      displacment = displacment.substr(0, displacment.size() - 1);
-
-      int r = 0;//nemam
-      int r2 = 0; //nemam
-      char dataInt;
+      cout << "Ld + apsolutno " << operand << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
-      sectionNode.data.push_back((char)((r << 4) | r2));
-      sectionNode.data.push_back(0x03);
-      // Sad mi treba sta je displaysment
-      if (regex_match(displacment, rx.integer))
-      {
-        this->assembler_help_file << "Displaycment je int: " << displacment << endl;
-        dataInt = stoi(displacment);
-        sectionNode.data.push_back((char)(dataInt >> 8));
-        sectionNode.data.push_back((char)dataInt);
-      }
-      else if (regex_match(displacment, rx.hex))
-      {
-        this->assembler_help_file << "Displaycment je hex: " << displacment << endl;
-        dataInt = stoi(displacment, 0, 16);
-        sectionNode.data.push_back((char)(dataInt >> 8));
-        sectionNode.data.push_back((char)dataInt);
-      }
-      else if (regex_match(displacment, rx.sym_regex))
-      {
-        this->assembler_help_file << "Displaycment je symbol: " << displacment << endl;
-        sectionNode.data.push_back(0x00);
-        sectionNode.data.push_back(0x00);
-        if (symbols.find(operand) == symbols.end())
-        {
-          // not defined symbol
-          SymbolTableNode *symbol = new SymbolTableNode(++this->_symbol_id, this->_section_id, true, false, false);
-          symbol->name = displacment;
-          symbol->value = 0;
-          symbol->section_name = this->current_section;
-          symbol->offset = current_line;
-          symbols.insert({displacment, *symbol});
-          // i treba da ga dodam u relokacionu tabelu?
-          RelocationTableNode *relocation_data = new RelocationTableNode(symbol->symbol_id, symbol->section_id, symbol->name);
-          relocation_data->value = current_line;
-          relocation_data->addend = 0;
-          relocations.insert({symbol->name, *relocation_data});
-        }
+      sectionNode.data.push_back((char)0x91);
+      sectionNode.data.push_back((char)(reg << 4));
+      if (literal) {
+        sectionNode.data.push_back((char) ((stoi(operand) >> 8) & 0xFF));
+        sectionNode.data.push_back((char) (stoi(operand) & 0xFF));
+      } else {
+        ret = process_symbol_disp(operand);
       }
       sectionNode.size += 4;
-      location_counter += 4;
-      this->assembler_help_file << "Load/store reg indirect with displaysment operand: " << operand << "with reg: " << reg << " and reg2: " << reg2 << " and displaycment: " << displacment << endl;
+      this->assembler_help_file << "Load memory apsolut : " << operand << endl;
     }
-    else if (regex_search(operand, match, rx.register_absolute_operand_regex))
+    else if (regex_search(operand, match, rx.memory_direct_operand_regex))
     {
-      //[r0]
-      int r = 0;
-      int r2 = 0;
-      //nemaju ova 2 poslata odmah
+     smatch match2;
+      bool literal =  false;
+      string operand = match.str(0);
+      cout << operand << endl;
+      if (regex_search(operand, match2, rx.lit_regex)){
+          literal = true;
+          operand = match2.str(0);
+          cout << match2.str(1) << endl;
+      } else if (regex_search(operand, match2, rx.sym_regex)){
+          operand = match2.str(0);
+      }
+      cout << "Ld + memory direct " << operand << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
-      sectionNode.data.push_back((char)((r << 4) | r2));
-      sectionNode.data.push_back(0x02);
-      sectionNode.size += 2;
-      location_counter += 2;
-      this->assembler_help_file << "Load/store reg indirect operand: " << endl;
+      sectionNode.data.push_back((char)0x92);
+      sectionNode.data.push_back((char)(reg << 4));
+      if (literal) {
+        sectionNode.data.push_back((char) ((stoi(operand) >> 8) & 0xFF));
+        sectionNode.data.push_back((char) (stoi(operand) & 0xFF));
+      } else {
+        ret = process_symbol_disp(operand);
+      }
+      sectionNode.size += 4;
+      this->assembler_help_file << "Load memory direct: " << operand << endl;
     }
     else
     {
-      cout << "Load/store with error parsing" << endl;
+      cout << "Load with error parsing" << endl;
       ret = -1;
     }
     break;
