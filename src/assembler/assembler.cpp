@@ -1,5 +1,61 @@
 #include "../../inc/assembler.h"
 
+//------------------------Helpers-------------------------------------------------------
+
+int getRegNum(string r)
+{
+  int ret = 0;
+  if (r == "pc")
+  {
+    ret = 15;
+  }
+  else if (r == "sp")
+  {
+    ret = 14;
+  }
+  else
+  {
+    r.erase(0, 2); //%r
+    ret = stoi(r);
+  }
+  return ret;
+}
+
+int getCssrRegNum(string reg)
+{
+  int val = 0;
+  if (reg == "status")
+  {
+    val = 0;
+  }
+  else if (reg == "handler")
+  {
+    val = 1;
+  }
+  else if (reg == "cause")
+  {
+    val = 2;
+  }
+  else
+  {
+    val = -1;
+  }
+  return val;
+}
+
+bool Assembler::isLiteral(string literal) {
+  bool ret = false;
+  smatch match;
+  if (regex_search(literal, match, rx.hex))
+  {
+    ret = true;
+  }
+  else if (regex_search(literal, match, rx.integer))
+  {
+    ret  = true;
+  }
+  return ret;
+}
 Assembler::Assembler()
 {
   this->_symbol_id = 0;
@@ -54,7 +110,9 @@ void Assembler::process_input_file()
   }
   while (getline(input, current_line))
   {
+    current_line = regex_replace(current_line, rx.square_bracket_space, " [$1] ");
     current_line = regex_replace(current_line, rx.tab, " ");
+    current_line = regex_replace(current_line, rx.disp_space,"$1+$2");
     current_line = regex_replace(current_line, rx.comma_space, ",");
     current_line = regex_replace(current_line, rx.label_space, ":");
     current_line = regex_replace(current_line, rx.comments, "$1");
@@ -598,26 +656,7 @@ int Assembler::word_dir_second(smatch match)
   word_label = word_label.substr(0, word_label.find(" "));
   for (string s : symbol_list)
   {
-    // ako je broj bacim allocate za toliki prostor samo
-    if (regex_match(s, rx.integer))
-    {
-      int dataInt = stoi(s) & 0xFFFFFFFF;
-      sectionNode.data.push_back((int)dataInt);
-      dataInt = (stoi(s) >> 16) & 0xFFFF0000;
-      sectionNode.data.push_back((int)dataInt);
-      assembler_help_file << "Word directive with number: " << s << "location_counter"
-                          << " : " << location_counter << endl;
-    }
-    else if (regex_match(s, rx.hex))
-    {
-      int dataInt = stoi(s, 0, 16) & 0xFFFFFFFF;
-      sectionNode.data.push_back((int)dataInt);
-      dataInt = (stoi(s, 0, 16) >> 16) & 0xFFFF0000;
-      sectionNode.data.push_back((int)dataInt);
-      assembler_help_file << "Word directive with hex number: " << s << "location_counter"
-                          << " : " << location_counter << endl;
-    }
-    else if (regex_match(s, rx.sym_regex))
+    if (regex_match(s, rx.sym_regex))
     {
       if (symbols.find(s) == symbols.end())
       {
@@ -670,9 +709,13 @@ int Assembler::word_dir_second(smatch match)
     }
     else
     {
-      cout << "Wrong word argument format " << endl
-           << "Error at line: " << this->current_line << "za symbol:" << s << endl;
-      return -1;
+      // ako je broj bacim allocate za toliki prostor samo
+      int dataInt = getLiteralValue(s) & 0xFFFFFFFF;
+      sectionNode.data.push_back((int)dataInt);
+      dataInt = (getLiteralValue(s) >> 16) & 0xFFFF0000;
+      sectionNode.data.push_back((int)dataInt);
+      assembler_help_file << "Word directive with number: " << s << "location_counter"
+                          << " : " << location_counter << endl;
     }
     sectionNode.size += 4;
     this->location_counter += 4;
@@ -694,48 +737,26 @@ int Assembler::process_skip_dir(smatch match)
     return -1;
   }
   SectionTableNode &sectionNode = sections.at(this->current_section);
-  if (regex_match(skip_val, rx.integer))
-  {
-    location_counter += stoi(skip_val, 0, 16);
-    assembler_help_file << "first pass .skip  with value: " << stoi(skip_val) << endl;
-  }
-  else if (regex_match(skip_val, rx.hex))
-  {
-    location_counter += stoi(skip_val, 0, 16);
-    assembler_help_file << "first pass .skip  with value: " << stoi(skip_val, 0, 16) << endl;
-  }
-
+  location_counter += getLiteralValue(skip_val);
   return ret;
 }
 
 int Assembler::skip_dir_second(smatch match)
 {
   int ret = 0;
+  int val;
   string skip_label = ((string)match[0]);
   string skip_val = skip_label.substr(skip_label.find(" "), skip_label.size());
   skip_label = skip_label.substr(0, skip_label.find(" "));
   SectionTableNode &sectionNode = sections.at(this->current_section);
-  if (regex_match(skip_val, rx.integer))
+  val = getLiteralValue(skip_val);
+  location_counter += val;
+  sectionNode.size += val;
+  assembler_help_file << "second pass .skip  with value: " << val << endl;
+  for (int i = 0; i < val; i++)
   {
-    location_counter += stoi(skip_val, 0, 16);
-    sectionNode.size += stoi(skip_val, 0, 16);
-    assembler_help_file << "second pass .skip  with value: " << stoi(skip_val) << endl;
-    for (int i = 0; i < stoi(skip_val, 0, 16); i++)
-    {
-      int temp = 0 & 0xFFFF;
-      sectionNode.data.push_back(temp);
-    }
-  }
-  else if (regex_match(skip_val, rx.hex))
-  {
-    location_counter += stoi(skip_val, 0, 16);
-    sectionNode.size += stoi(skip_val, 0, 16);
-    assembler_help_file << "second pass .skip  with value: " << stoi(skip_val, 0, 16) << endl;
-    for (int i = 0; i < stoi(skip_val, 0, 16); i++)
-    {
-      int temp = 0 & 0xFFFF;
-      sectionNode.data.push_back(temp);
-    }
+    int temp = 0 & 0xFFFF;
+    sectionNode.data.push_back(temp);
   }
   return ret;
 }
@@ -960,7 +981,7 @@ int Assembler::call_inst_second(smatch match)
   sectionNode.data.push_back((char)CALL);
   sectionNode.data.push_back((char)0);
 
-  ret = process_symbol_disp(match.str(2));
+  ret = process_symbol_disp(0, match.str(2));
   // ovde treba da obradim da mi operand stavlja u bazen literala
   //  i onda dips u najniza 12 bita do toga u bazenu literala
   sectionNode.size += 4;
@@ -1024,7 +1045,7 @@ int Assembler::jmp_inst_second(smatch match)
   sectionNode.data.push_back(JMP);
   sectionNode.data.push_back((char)0);
   assembler_help_file << ".jmp with operand: " << match.str(2) << endl;
-  ret = process_symbol_disp(match.str(2));
+  ret = process_symbol_disp(0, match.str(2));
   // ovde treba da obradim da mi operand stavlja u bazen literala
   //  i onda dips u najniza 12 bita do toga u bazenu literala
   sectionNode.size += 4;
@@ -1045,24 +1066,6 @@ int Assembler::process_beq_inst(smatch match)
   return ret;
 }
 
-int getRegNum(string r)
-{
-  int ret = 0;
-  if (r == "pc")
-  {
-    ret = 15;
-  }
-  else if (r == "sp")
-  {
-    ret = 14;
-  }
-  else
-  {
-    r.erase(0, 2); //%r
-    ret = stoi(r);
-  }
-  return ret;
-}
 int Assembler::beq_inst_second(smatch match)
 {
   int ret = 0;
@@ -1080,9 +1083,7 @@ int Assembler::beq_inst_second(smatch match)
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(BEQ);
   sectionNode.data.push_back((char)(val1));
-  sectionNode.data.push_back((char)(val1 << 4));
-
-  ret = process_symbol_disp(match.str(2));
+  ret = process_symbol_disp(val1, match.str(2));
   // sad ovde treba u najnizih 12b da spakujem operand tj adresu, ili odstojanje od
   // bazena literala gde se nalazi tacna adresa
   sectionNode.size += 4;
@@ -1119,9 +1120,7 @@ int Assembler::bne_inst_second(smatch match)
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(BNE);
   sectionNode.data.push_back((char)(val1));
-  sectionNode.data.push_back((char)(val1 << 4));
-
-  ret = process_symbol_disp(match.str(2));
+  ret = process_symbol_disp(val1, match.str(2));
   // sad ovde treba u najnizih 12b da spakujem operand tj adresu, ili odstojanje od
   // bazena literala gde se nalazi tacna adresa
   sectionNode.size += 4;
@@ -1158,9 +1157,7 @@ int Assembler::bgt_inst_second(smatch match)
   SectionTableNode &sectionNode = sections.at(this->current_section);
   sectionNode.data.push_back(BGT);
   sectionNode.data.push_back((char)(val1));
-  sectionNode.data.push_back((char)(val1 << 4));
-
-  ret = process_symbol_disp(operand);
+  ret = process_symbol_disp(val1, operand);
   // sad ovde treba u najnizih 12b da spakujem operand tj adresu, ili odstojanje od
   // bazena literala gde se nalazi tacna adresa
   sectionNode.size += 4;
@@ -1635,7 +1632,7 @@ int Assembler::st_inst_second(smatch match)
   string reg = operands.substr(0, operands.find(","));
   string operand = operands.substr(operands.find(",") + 1, operands.size());
   assembler_help_file << "str sa operandom: " << operand << " and reg" << reg << endl;
-  cout << "Store " << reg<< " , " << operand <<  endl;
+  cout << "Store " << reg << " , " << operand << endl;
   int val = getRegNum(reg);
   ret = process_operand(operand, val, false);
   // cout << endl
@@ -1655,27 +1652,7 @@ int Assembler::process_csrrd_inst(smatch match)
   location_counter += 4;
   return ret;
 }
-int getCssrRegNum(string reg)
-{
-  int val = 0;
-  if (reg == "status")
-  {
-    val = 0;
-  }
-  else if (reg == "handler")
-  {
-    val = 1;
-  }
-  else if (reg == "cause")
-  {
-    val = 2;
-  }
-  else
-  {
-    val = -1;
-  }
-  return val;
-}
+
 int Assembler::csrrd_inst_second(smatch match)
 {
   int ret = 0;
@@ -1742,7 +1719,7 @@ int Assembler::csrwr_inst_second(smatch match)
   location_counter += 4;
   return ret;
 }
-int Assembler::process_symbol_disp(string operand)
+int Assembler::process_symbol_disp(int cReg, string operand)
 {
   // ovde treba da obradim da mi operand stavlja u bazen literala
   //  i onda dips u najniza 12 bita do toga u bazenu literala
@@ -1811,6 +1788,23 @@ int Assembler::process_symbol_disp(string operand)
   return ret;
 }
 
+int Assembler::getLiteralValue(string literal)
+{
+  smatch match;
+  int value = 0;
+  if (regex_search(literal, match, rx.hex))
+  {
+    literal = literal.substr(literal.find('x'|'X') + 1, literal.size());
+    value = stoi(literal, 0, 16);
+    cout << "literal in getval: " << literal << " value " << value;
+  }
+  else
+  {
+    value = stoi(literal);
+  }
+  return value;
+}
+
 int Assembler::process_operand(string operand, int reg, bool load_store)
 {
   smatch match;
@@ -1821,13 +1815,42 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
     // st
     if (regex_search(operand, match, rx.register_relative_operand_regex))
     {
-      int r = 0; // to nemam sad
-      char dataInt;
+      int r = 0;
+      string operand = match.str(0);
+      smatch match2;
+      bool literal = false;
+      int literalVal;
+      // izvucem iz [%r13 + operand] registar i operand
+      //  broj registra odmah kodiram pa operand saljem na onaj process
+      if (regex_search(operand, match2, rx.reg_regex))
+      {
+        r = getRegNum(match2.str(0));
+
+      }
+      operand = operand.substr(operand.find("+"), operand.size());
+      operand = operand.substr(1,operand.find("]")-1);
+      if (regex_search(operand, match2, rx.lit_regex))
+      {
+        literal = true;
+        literalVal = getLiteralValue(operand);
+      }
+      else if (regex_search(operand, match2, rx.sym_regex))
+      {
+        operand = match2.str(0);
+      }
       cout << "St + registarsko indirektno sa disp" << match.str(0) << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
       sectionNode.data.push_back((char)0x80);
-
-      operand = operand.substr(0, operand.size());
+      sectionNode.data.push_back((char)((r & 0x0F)));
+      if (literal)
+      {
+        sectionNode.data.push_back((char)((reg << 4) | ((literalVal >> 8) & 0x0F)));
+        sectionNode.data.push_back((char)(literalVal & 0xFF));
+      }
+      else
+      {
+        ret = process_symbol_disp(0, operand);
+      }
 
       sectionNode.size += 4;
       this->assembler_help_file << "Store registar indirect with disp: " << operand << endl;
@@ -1836,7 +1859,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
     {
       int r = 0; // to nemam sad
       string operand = match.str(0);
-      operand = operand.substr(1, operand.size()-1);
+      operand = operand.substr(1, operand.size() - 1);
       r = getRegNum(operand);
       cout << "St + registarsko apsolutno operand" << r << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
@@ -1850,9 +1873,9 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
     }
     else if (regex_search(operand, match, rx.reg_dir_regex))
     {
-      int r = 0;  
+      int r = 0;
       r = getRegNum(match.str(0));
-      cout << "St + regdir"  << reg << ", " << r <<  endl;
+      cout << "St + regdir" << reg << ", " << r << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
       sectionNode.data.push_back((char)0x91);
       sectionNode.data.push_back((char)((r << 4) | reg));
@@ -1868,13 +1891,28 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
     }
     else if (regex_search(operand, match, rx.memory_direct_operand_regex))
     {
-      //[r0]
-      int r = 0;
-      int r2 = 0;
+      smatch match2;
+      bool literal = false;
+      int literalVal;
       cout << "St + memorijsko direktno" << match.str(0) << endl;
-      // nemaju ova 2 poslata odmah
+      if (regex_search(operand, match2, rx.lit_regex))
+      {
+        literal = true;
+        literalVal = getLiteralValue(operand);
+      }
+      else if (regex_search(operand, match2, rx.sym_regex))
+      {
+        operand = match2.str(0);
+      }
       SectionTableNode &sectionNode = sections.at(this->current_section);
       sectionNode.data.push_back((char)0x80);
+      sectionNode.data.push_back((char)0);
+      if (literal) {
+        sectionNode.data.push_back((char)((reg << 4) | ((literalVal >> 8) & 0xF)));
+        sectionNode.data.push_back((char)(literalVal & 0xFF));
+      } else {
+        process_symbol_disp(reg, operand);
+      }
 
       sectionNode.size += 4;
       this->assembler_help_file << "Store memory direct: " << endl;
@@ -1890,31 +1928,41 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
     // ld
     if (regex_search(operand, match, rx.register_relative_operand_regex))
     {
-      int r = 0; 
+      int r = 0;
       string operand = match.str(0);
       smatch match2;
-      bool literal =  false;
-      //izvucem iz [%r13 + operand] registar i operand
-      // broj registra odmah kodiram pa operand saljem na onaj process
-      if (regex_search(operand, match2, rx.reg_regex)) {
+      bool literal = false;
+      int literalVal;
+      // izvucem iz [%r13 + operand] registar i operand
+      //  broj registra odmah kodiram pa operand saljem na onaj process
+      if (regex_search(operand, match2, rx.reg_regex))
+      {
         r = getRegNum(match2.str(0));
       }
       operand = operand.substr(operand.find("+"), operand.size());
-      if (regex_search(operand, match2, rx.lit_regex)){
-          literal = true;
-          operand = match2.str(0);
-      } else if (regex_search(operand, match2, rx.sym_regex)){
-          operand = match2.str(0);
+      operand = operand.substr(1,operand.find("]")-1);
+      if (regex_search(operand, match2, rx.lit_regex))
+      {
+        literal = true;
+        literalVal = getLiteralValue(operand);
+      }
+      else if (regex_search(operand, match2, rx.sym_regex))
+      {
+        operand = match2.str(0);
+        cout << "operand je: " << operand;
       }
       cout << "Ld + registarsko indirektno sa disp" << match.str(0) << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
       sectionNode.data.push_back((char)0x92);
       sectionNode.data.push_back((char)((reg << 4) | r));
-      if (literal) {
-        sectionNode.data.push_back((char) ((stoi(operand) >> 8) & 0xFF));
-        sectionNode.data.push_back((char) (stoi(operand) & 0xFF));
-      } else {
-        ret = process_symbol_disp(operand);
+      if (literal)
+      {
+        sectionNode.data.push_back((char)((literalVal >> 8) & 0xFF));
+        sectionNode.data.push_back((char)(literalVal & 0xFF));
+      }
+      else
+      {
+        ret = process_symbol_disp(0, operand);
       }
       sectionNode.size += 4;
       this->assembler_help_file << "Load registar indirect with disp: " << operand << endl;
@@ -1924,7 +1972,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       int r = 0; // to nemam sad
       cout << "Ld + registarsko apsolutno operand" << match.str(0) << endl;
       string operand = match.str(0);
-      operand = operand.substr(1, operand.size()-1);
+      operand = operand.substr(1, operand.size() - 1);
       r = getRegNum(operand);
       SectionTableNode &sectionNode = sections.at(this->current_section);
       sectionNode.data.push_back((char)0x92);
@@ -1936,7 +1984,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
     }
     else if (regex_search(operand, match, rx.reg_dir_regex))
     {
-      int r = 0;  
+      int r = 0;
       r = getRegNum(match.str(0));
       cout << "Ld + regdir" << r << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
@@ -1950,50 +1998,62 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
     else if (regex_search(operand, match, rx.absolute_operand_regex))
     {
       smatch match2;
-      bool literal =  false;
+      bool literal = false;
       string operand = match.str(0);
       operand = operand.substr(1, operand.size());
-      if (regex_search(operand, match2, rx.lit_regex)){
-          literal = true;
-          operand = match2.str(0);
-      } else if (regex_search(operand, match2, rx.sym_regex)){
-          operand = match2.str(0);
+      if (regex_search(operand, match2, rx.lit_regex))
+      {
+        literal = true;
+        operand = match2.str(0);
+      }
+      else if (regex_search(operand, match2, rx.sym_regex))
+      {
+        operand = match2.str(0);
       }
       cout << "Ld + apsolutno " << operand << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
       sectionNode.data.push_back((char)0x91);
       sectionNode.data.push_back((char)(reg << 4));
-      if (literal) {
-        sectionNode.data.push_back((char) ((stoi(operand) >> 8) & 0xFF));
-        sectionNode.data.push_back((char) (stoi(operand) & 0xFF));
-      } else {
-        ret = process_symbol_disp(operand);
+      if (literal)
+      {
+        sectionNode.data.push_back((char)((getLiteralValue(operand) >> 8) & 0x0F));
+        sectionNode.data.push_back((char)(getLiteralValue(operand) & 0xFF));
+      }
+      else
+      {
+        ret = process_symbol_disp(0, operand);
       }
       sectionNode.size += 4;
       this->assembler_help_file << "Load memory apsolut : " << operand << endl;
     }
     else if (regex_search(operand, match, rx.memory_direct_operand_regex))
     {
-     smatch match2;
-      bool literal =  false;
+      smatch match2;
+      bool literal = false;
       string operand = match.str(0);
       cout << operand << endl;
-      if (regex_search(operand, match2, rx.lit_regex)){
-          literal = true;
-          operand = match2.str(0);
-          cout << match2.str(1) << endl;
-      } else if (regex_search(operand, match2, rx.sym_regex)){
-          operand = match2.str(0);
+      if (regex_search(operand, match2, rx.lit_regex))
+      {
+        literal = true;
+        operand = match2.str(0);
+        cout << match2.str(1) << endl;
+      }
+      else if (regex_search(operand, match2, rx.sym_regex))
+      {
+        operand = match2.str(0);
       }
       cout << "Ld + memory direct " << operand << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
       sectionNode.data.push_back((char)0x92);
       sectionNode.data.push_back((char)(reg << 4));
-      if (literal) {
-        sectionNode.data.push_back((char) ((stoi(operand) >> 8) & 0xFF));
-        sectionNode.data.push_back((char) (stoi(operand) & 0xFF));
-      } else {
-        ret = process_symbol_disp(operand);
+      if (literal)
+      {
+        sectionNode.data.push_back((char)((getLiteralValue(operand) >> 8) & 0xFF));
+        sectionNode.data.push_back((char)(getLiteralValue(operand) & 0xFF));
+      }
+      else
+      {
+        ret = process_symbol_disp(0, operand);
       }
       sectionNode.size += 4;
       this->assembler_help_file << "Load memory direct: " << operand << endl;

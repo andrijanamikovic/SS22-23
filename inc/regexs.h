@@ -27,6 +27,8 @@ public:
   regex comma_space = regex(" ?, ?");
   regex label_space = regex(" ?: ?");
   regex boundary_space = regex("^( *)([^ ].*[^ ])( *)$");
+  regex square_bracket_space = regex("\\[\\s*(.*?)\\s*\\]");
+  regex disp_space = regex("(.*?)\\s*\\+\\s*(.*?)");
   regex comments = regex("#.*");
 
   //--------------------------------------------------------------------------Directives------------------------
@@ -79,7 +81,7 @@ public:
   regex memory_direct_operand_regex = regex("^(" + literal_regex + "|" + symbol_regex + ")$");
   regex reg_dir_regex = regex("^("+register_regex+")$");
   regex register_absolute_operand_regex = regex("(^\\[" + register_regex + "\\])$");
-  regex register_relative_operand_regex = regex("(^\\[" + register_regex + " \\+ (" + symbol_regex + "|" + literal_regex + ")\\])$");
+  regex register_relative_operand_regex = regex("(^\\[" + register_regex + "\\s*\\+\\s*(" + symbol_regex + "|" + literal_regex + ")\\])$");
   // string operand_regex = absolute_operand_regex + "|" + memory_direct_operand_regex + "|" + pc_relative_operand_regex  + "|" + reg_dir_regex + "|" + register_absolute_operand_regex + "|" + register_relative_operand_regex;
   
   // //-----------------------------------------------Jump----------------------------------------------------------

@@ -112,11 +112,13 @@ class Assembler {
     int csrwr_inst_second(smatch match);
 
     int process_operand(string operand,int reg, bool load);
-    int process_symbol_disp(string operand);
+    int process_symbol_disp(int cReg, string operand);
     void printSymbolTable();
     void printRelocationTable();
     void printSectionTable();
     void outputTables();
     list<string> split(string s, string delimeter);
+    bool isLiteral(string literal);
+    int getLiteralValue(string literal);
 };
 #endif 
