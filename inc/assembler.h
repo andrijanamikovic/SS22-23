@@ -34,7 +34,7 @@ class Assembler {
     int current_section_id;
     ofstream* binary_output;
     ofstream assembler_help_file;
-    vector<char> data;
+    vector<int> data;
 
     int process();
     int process_second_pass();
@@ -112,7 +112,7 @@ class Assembler {
     int csrwr_inst_second(smatch match);
 
     int process_operand(string operand,int reg, bool load);
-    int process_symbol_disp(int cReg, string operand);
+    int process_symbol_disp(int operationCode, int cReg, string operand, SectionTableNode &sectionNode );
     void printSymbolTable();
     void printRelocationTable();
     void printSectionTable();
@@ -120,5 +120,6 @@ class Assembler {
     list<string> split(string s, string delimeter);
     bool isLiteral(string literal);
     int getLiteralValue(string literal);
+    int getValue(bool *literal, bool *big, string *operand);
 };
 #endif 

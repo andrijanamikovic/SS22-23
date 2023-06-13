@@ -41,7 +41,7 @@ class SectionTableNode {
     int size;
     int address; //start address?
     int section_id;
-    vector<char> data;
+    vector<int> data;
     SectionTableNode(string name, int address, int size, int section_id);
     SectionTableNode();
 };
@@ -63,7 +63,7 @@ enum INSTRUCTIONS{
   CALL = 0x20,
   JMP = 0x30,
   BEQ = 0x31,
-  BNE = 0x31,
+  BNE = 0x32,
   BGT = 0x33,
   LD = 0x80,
   ST = 0x90,

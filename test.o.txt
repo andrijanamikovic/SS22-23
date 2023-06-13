@@ -1,5 +1,9 @@
 End of section: UND with size: 0
+End of section:  my_code_main with size: 0
 .end 
+beq: 1 , 2 , 0x27
+bne: 1 , 2 , 0x35
+bne: 1 , 2 , 0xFFFF
 str sa operandom: my_counter and reg%r1
 Store memory direct: 
 str sa operandom: %r12 and reg%r4
@@ -10,16 +14,15 @@ ld sa operandom %r2
 Load reg direct operand: %r2
 ld sa operandom [%r12]
 Load registar indirect : %r12] , 4
-ld sa operandom [%r12 + 15]
+ld sa operandom [%r12+15]
 Load registar indirect with disp: 15
-ld sa operandom [%r12 + my_counter]
-Jump absolute operand: my_counter
+ld sa operandom [%r12+my_counter]
 Load registar indirect with disp: my_counter
 ld sa operandom $3
 Load memory apsolut : 3
 ld sa operandom 0xF3
-Load memory direct: 0
-.end of section:  my_data with size: 36
+Load memory direct: 0xF3
+.end of section:  my_data with size: 52
 Posle upisa: 
 
 Relocation table
@@ -27,13 +30,15 @@ Symbol_id Symbol_name  Section_id type addend value
 
 Section table: 
 Section_id Section_name  Section_address Section_size Data_len
-1  my_data 0  36 31 
+1  my_code_main 0  0 0 
+2  my_data 16  52 40 
 0 UND 0  0 0 
 
 Symbol table: 
 Symbol_id Symbol_name  Section_id Section_name defined local extern
-1  my_data 1    1 1  0
-2 my_isr_terminal 1   my_data  1 1  0
+1  my_code_main 1    1 1  0
+2  my_data 2    1 1  0
+3 my_isr_terminal 2   my_data  1 1  0
 
 Relocation table
 Symbol_id Symbol_name  Section_id type addend value

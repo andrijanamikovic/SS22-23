@@ -43,7 +43,8 @@ int getCssrRegNum(string reg)
   return val;
 }
 
-bool Assembler::isLiteral(string literal) {
+bool Assembler::isLiteral(string literal)
+{
   bool ret = false;
   smatch match;
   if (regex_search(literal, match, rx.hex))
@@ -52,9 +53,36 @@ bool Assembler::isLiteral(string literal) {
   }
   else if (regex_search(literal, match, rx.integer))
   {
-    ret  = true;
+    ret = true;
   }
   return ret;
+}
+
+int Assembler::getValue(bool *literal, bool *big, string *operand)
+{
+  int ret = -1;
+  int literalVal = 0;
+  smatch match2;
+  cout << "Get valll " << endl;
+
+  // sta mi je operand dal ga prebacim u broj?
+  if (regex_search(*operand, match2, rx.lit_regex))
+  {
+    literalVal = getLiteralValue(*operand);
+    *literal = true;
+    if (literalVal < -2048 || literalVal >= 2047)
+      *big = true;
+    else
+    {
+      *big = false;
+    }
+  }
+  else if (regex_search(*operand, match2, rx.sym_regex))
+  {
+    *literal = false;
+    *operand = match2.str(0);
+  }
+  return literalVal;
 }
 Assembler::Assembler()
 {
@@ -112,7 +140,7 @@ void Assembler::process_input_file()
   {
     current_line = regex_replace(current_line, rx.square_bracket_space, " [$1] ");
     current_line = regex_replace(current_line, rx.tab, " ");
-    current_line = regex_replace(current_line, rx.disp_space,"$1+$2");
+    current_line = regex_replace(current_line, rx.disp_space, "$1+$2");
     current_line = regex_replace(current_line, rx.comma_space, ",");
     current_line = regex_replace(current_line, rx.label_space, ":");
     current_line = regex_replace(current_line, rx.comments, "$1");
@@ -873,9 +901,8 @@ int Assembler::halt_inst_second(smatch match)
     sections.insert({this->current_section, *current_section_node});
     assembler_help_file << "Halt in section: " << current_section_node->name << " with size: " << current_section_node->size << endl;
   }
-  char temp = HALT;
-  sectionNode.data.push_back(temp);
-  sectionNode.data.push_back((char)0);
+  int temp = HALT;
+  sectionNode.data.push_back((temp << 4) | 0x0);
   sectionNode.data.push_back((int)0);
   sectionNode.size += 4;
   location_counter += 4;
@@ -911,7 +938,7 @@ int Assembler::int_inst_second(smatch match)
   string int_label = ((string)match[0]);
 
   assembler_help_file << "int " << endl;
-  sectionNode.data.push_back(INT);
+  sectionNode.data.push_back((char)((INT << 4) | 0x0));
   sectionNode.data.push_back((char)0);
   sectionNode.data.push_back((int)0);
   sectionNode.size += 4;
@@ -958,8 +985,8 @@ int Assembler::iret_inst_second(smatch match)
   sectionNode.data.push_back((int)(0x00));
   sectionNode.data.push_back((char)(0x04));
 
-  //mozda treba da se upisuje u cause 0 kad se vrati mozda?
-  //zato sto int upsije 4 u cause registar 
+  // mozda treba da se upisuje u cause 0 kad se vrati mozda?
+  // zato sto int upsije 4 u cause registar
 
   sectionNode.size += 8;
   return ret;
@@ -981,15 +1008,34 @@ int Assembler::call_inst_second(smatch match)
 {
   int ret = 0;
   SectionTableNode &sectionNode = sections.at(this->current_section);
-  sectionNode.data.push_back((char)CALL);
-  sectionNode.data.push_back((char)0);
+  bool big = true;
+  string operand = match.str(2);
+  bool literal = false;
+  int literalVal = getValue(&literal, &big, &operand);
+  if (literal)
+  {
+    if (!big)
+    {
+      cout << "Call not big literal" << endl;
+      sectionNode.data.push_back((char)(0x20 | 0x0));
+      sectionNode.data.push_back((char)0x00);
+      sectionNode.data.push_back((char)((0 << 4) | ((literalVal >> 8) & 0x0F)));
+      sectionNode.data.push_back((char)(literalVal & 0xFF));
+    }
+    else
+    {
+      // bazen literala call literal
+    }
+  }
+  else
+  {
+    // vrednost simbola?
+    // ako ne znam?
+    // ako znam jer on onda odmah u bazenu literala kad je definisan? nije? samo u tabeli?
+    // proverim dal je veca od 12 ako nije onda odmah, a ako jeste onda bazen literala?
+  }
+  // ret = process_symbol_disp(CALL, 0, match.str(2), sectionNode);
 
-  ret = process_symbol_disp(0, match.str(2));
-  // ovde treba da obradim da mi operand stavlja u bazen literala
-  //  i onda dips u najniza 12 bita do toga u bazenu literala
-  // da ako ne moze da mi stane simbol u 12b
-  // ja imam ispod iskodiran jmp 4
-  // a ispod njega stavim vrednost tog simbola u labeli, a u call u disp stavim 8
   sectionNode.size += 4;
   location_counter += 4;
   return ret;
@@ -1048,13 +1094,34 @@ int Assembler::jmp_inst_second(smatch match)
 {
   int ret = 0;
   SectionTableNode &sectionNode = sections.at(this->current_section);
-  sectionNode.data.push_back(JMP);
-  sectionNode.data.push_back((char)0);
   assembler_help_file << ".jmp with operand: " << match.str(2) << endl;
-  ret = process_symbol_disp(0, match.str(2));
-  // ovde treba da obradim da mi operand stavlja u bazen literala
-  //  i onda dips u najniza 12 bita do toga u bazenu literala
-  // ista logika kao call samo ne ide pc na stek
+  bool big = false;
+  string operand = match.str(2);
+  bool literal = false;
+  int literalVal = getValue(&literal, &big, &operand);
+  if (literal)
+  {
+    if (!big)
+    {
+      sectionNode.data.push_back((char)(0x30 << 4) | 0x0);
+      sectionNode.data.push_back((char)0x00);
+      sectionNode.data.push_back((char)((0 << 4) | ((literalVal >> 8) & 0x0F)));
+      sectionNode.data.push_back((char)(literalVal & 0xFF));
+    }
+    else
+    {
+      // bazen literala jmp literal
+    }
+  }
+  else
+  {
+    // vrednost simbola?
+    // ako ne znam?
+    // ako znam jer on onda odmah u bazenu literala kad je definisan? nije? samo u tabeli?
+    // proverim dal je veca od 12 ako nije onda odmah, a ako jeste onda bazen literala?
+  }
+  // ret = process_symbol_disp(JMP, 0, match.str(2), sectionNode);
+
   sectionNode.size += 4;
   location_counter += 4;
   return ret;
@@ -1088,9 +1155,31 @@ int Assembler::beq_inst_second(smatch match)
   val2 = getRegNum(r2);
   assembler_help_file << "beq: " << val1 << " , " << val2 << " , " << operand << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
-  sectionNode.data.push_back(BEQ);
-  sectionNode.data.push_back((char)(val1));
-  ret = process_symbol_disp(val1, match.str(2));
+  bool big = false;
+  bool literal = false;
+  int literalVal = getValue(&literal, &big, &operand);
+  if (literal)
+  {
+    if (!big)
+    {
+      sectionNode.data.push_back((char)(0x31 << 4) | 0x0);
+      sectionNode.data.push_back((char)(val1 << 4) | val2);
+      sectionNode.data.push_back((char)((0 << 4) | ((literalVal >> 8) & 0x0F)));
+      sectionNode.data.push_back((char)(literalVal & 0xFF));
+    }
+    else
+    {
+      // bazen literala beq literal
+    }
+  }
+  else
+  {
+    // vrednost simbola?
+    // ako ne znam?
+    // ako znam jer on onda odmah u bazenu literala kad je definisan? nije? samo u tabeli?
+    // proverim dal je veca od 12 ako nije onda odmah, a ako jeste onda bazen literala?
+  }
+  // ret = process_symbol_disp(BEQ, val1, match.str(2), sectionNode);
   // sad ovde treba u najnizih 12b da spakujem operand tj adresu, ili odstojanje od
   // bazena literala gde se nalazi tacna adresa
   sectionNode.size += 4;
@@ -1125,9 +1214,31 @@ int Assembler::bne_inst_second(smatch match)
   val2 = getRegNum(r2);
   assembler_help_file << "bne: " << val1 << " , " << val2 << " , " << operand << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
-  sectionNode.data.push_back(BNE);
-  sectionNode.data.push_back((char)(val1));
-  ret = process_symbol_disp(val1, match.str(2));
+  bool big = false;
+  bool literal = false;
+  int literalVal = getValue(&literal, &big, &operand);
+  if (literal)
+  {
+    if (!big)
+    {
+      sectionNode.data.push_back((char)(0x32 << 4) | 0x0);
+      sectionNode.data.push_back((char)(val1 << 4) | val2);
+      sectionNode.data.push_back((char)((0 << 4) | ((literalVal >> 8) & 0x0F)));
+      sectionNode.data.push_back((char)(literalVal & 0xFF));
+    }
+    else
+    {
+      // bazen literala bne literal
+    }
+  }
+  else
+  {
+    // vrednost simbola?
+    // ako ne znam?
+    // ako znam jer on onda odmah u bazenu literala kad je definisan? nije? samo u tabeli?
+    // proverim dal je veca od 12 ako nije onda odmah, a ako jeste onda bazen literala?
+  }
+  // ret = process_symbol_disp(BNE, val1, match.str(2), sectionNode);
   // sad ovde treba u najnizih 12b da spakujem operand tj adresu, ili odstojanje od
   // bazena literala gde se nalazi tacna adresa
   sectionNode.size += 4;
@@ -1162,9 +1273,31 @@ int Assembler::bgt_inst_second(smatch match)
   val2 = getRegNum(r2);
   assembler_help_file << "bgt: " << val1 << " , " << val2 << " , " << operand << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
-  sectionNode.data.push_back(BGT);
-  sectionNode.data.push_back((char)(val1));
-  ret = process_symbol_disp(val1, operand);
+  bool big = false;
+  bool literal = false;
+  int literalVal = getValue(&literal, &big, &operand);
+  if (literal)
+  {
+    if (!big)
+    {
+      sectionNode.data.push_back((char)(0x33 << 4) | 0x0);
+      sectionNode.data.push_back((char)(val1 << 4) | val2);
+      sectionNode.data.push_back((char)((0 << 4) | ((literalVal >> 8) & 0x0F)));
+      sectionNode.data.push_back((char)(literalVal & 0xFF));
+    }
+    else
+    {
+      // bazen literala bgt literal
+    }
+  }
+  else
+  {
+    // vrednost simbola?
+    // ako ne znam?
+    // ako znam jer on onda odmah u bazenu literala kad je definisan? nije? samo u tabeli?
+    // proverim dal je veca od 12 ako nije onda odmah, a ako jeste onda bazen literala?
+  }
+  // ret = process_symbol_disp(BGT, val1, operand, sectionNode);
   // sad ovde treba u najnizih 12b da spakujem operand tj adresu, ili odstojanje od
   // bazena literala gde se nalazi tacna adresa
   sectionNode.size += 4;
@@ -1725,72 +1858,36 @@ int Assembler::csrwr_inst_second(smatch match)
   location_counter += 4;
   return ret;
 }
-int Assembler::process_symbol_disp(int cReg, string operand)
+int Assembler::process_symbol_disp(int operationCode, int cReg, string operand, SectionTableNode &sectionNode)
 {
   // ovde treba da obradim da mi operand stavlja u bazen literala
   //  i onda dips u najniza 12 bita do toga u bazenu literala
   // ne povecavam section_size i location_counter za ovih 12b sto ostalo tj 2B al najvisa 4 su 0
   // ali moram da vidim sta se desava sa bazenom literala
-  // ovo dole mi je kod od prosle za jmp mozda moze posluziti
   int ret = 0;
-  smatch match;
-  if (regex_search(operand, match, rx.jump_absolute_operand_regex))
+  switch (operationCode)
   {
-    // char dataInt;
-    // SectionTableNode &sectionNode = sections.at(this->current_section);
-    // sectionNode.data.push_back(0xff);
-    // sectionNode.data.push_back(0x00);
-    // operand = operand.substr(1, operand.size());
-    // if (regex_match(operand, rx.integer))
-    // {
-    //   this->assembler_help_file << "Absolute operand: " << operand << endl;
-    //   dataInt = stoi(operand);
-    //   SectionTableNode &sectionNode = sections.at(this->current_section);
-    //   sectionNode.data.push_back((char)(dataInt >> 8));
-    //   sectionNode.data.push_back((char)dataInt);
-    // }
-    // else if (regex_match(operand, rx.hex))
-    // {
-    //   this->assembler_help_file << "Absolute operand hex: " << operand << endl;
-    //   dataInt = stoi(operand, 0, 16);
-    //   SectionTableNode &sectionNode = sections.at(this->current_section);
-    //   sectionNode.data.push_back((char)(dataInt >> 8));
-    //   sectionNode.data.push_back((char)dataInt);
-    // }
-    // else if (regex_match(operand, rx.sym_regex))
-    // {
-    //   // ako je simbol i nemam radim sta?
-    //   SectionTableNode &sectionNode = sections.at(this->current_section);
-    //   sectionNode.data.push_back(0x00);
-    //   sectionNode.data.push_back(0x00);
-    //   if (symbols.find(operand) == symbols.end())
-    //   {
-    //     // not defined symbol
-    //     SymbolTableNode *symbol = new SymbolTableNode(++this->_symbol_id, 0, true, false, false);
-    //     symbol->name = operand;
-    //     symbol->value = 0;
-    //     symbol->section_name = "UND";
-    //     symbol->type = "NOTYP";
-    //     symbol->offset = current_line;
-    //     symbols.insert({operand, *symbol});
-    //     // i treba da ga dodam u relokacionu tabelu?
-    //     RelocationTableNode *relocation_data = new RelocationTableNode(symbol->symbol_id, 0, symbol->name);
-    //     relocation_data->value = current_line;
-    //     relocation_data->type = "TYPE_16";
-    //     relocation_data->addend = 0;
-    //     relocation_data->offset = location_counter + 2;
-    //     relocations.insert({symbol->name, *relocation_data});
-    //   }
-    // }
-    // sectionNode.size += 4;
-    // location_counter += 4;
-    this->assembler_help_file << "Jump absolute operand: " << operand << endl;
+  case CALL:
+    // bazen literala
+    break;
+  case JMP:
+    // bazen literala
+    break;
+  case BEQ:
+
+    break;
+  case BNE:
+    break;
+  case BGT:
+    break;
+  case LD:
+    break;
+  case ST:
+    break;
+  default:
+    break;
   }
-  else
-  {
-    cout << "Jump with error parsing" << endl;
-    ret = -1;
-  }
+
   return ret;
 }
 
@@ -1800,7 +1897,7 @@ int Assembler::getLiteralValue(string literal)
   int value = 0;
   if (regex_search(literal, match, rx.hex))
   {
-    literal = literal.substr(literal.find('x'|'X') + 1, literal.size());
+    literal = literal.substr(literal.find('x' | 'X') + 1, literal.size());
     value = stoi(literal, 0, 16);
     cout << "literal in getval: " << literal << " value " << value;
   }
@@ -1824,42 +1921,41 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       int r = 0;
       string operand = match.str(0);
       smatch match2;
-      bool literal = false;
-      int literalVal;
       // izvucem iz [%r13 + operand] registar i operand
       //  broj registra odmah kodiram pa operand saljem na onaj process
       if (regex_search(operand, match2, rx.reg_regex))
       {
         r = getRegNum(match2.str(0));
-
       }
       operand = operand.substr(operand.find("+"), operand.size());
-      operand = operand.substr(1,operand.find("]")-1);
-      if (regex_search(operand, match2, rx.lit_regex))
-      {
-        literal = true;
-        literalVal = getLiteralValue(operand);
-      }
-      else if (regex_search(operand, match2, rx.sym_regex))
-      {
-        operand = match2.str(0);
-      }
+      operand = operand.substr(1, operand.find("]") - 1);
+      bool big = false;
+      bool literal = false;
+      int literalVal = getValue(&literal, &big, &operand);
       cout << "St + registarsko indirektno sa disp" << match.str(0) << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
-      sectionNode.data.push_back((char)0x80);
-      sectionNode.data.push_back((char)((r & 0x0F)));
       if (literal)
       {
-        sectionNode.data.push_back((char)((reg << 4) | ((literalVal >> 8) & 0x0F)));
-        sectionNode.data.push_back((char)(literalVal & 0xFF));
+        if (!big)
+        {
+          sectionNode.data.push_back((char)0x80);
+          sectionNode.data.push_back((char)((r & 0x0F)));
+          sectionNode.data.push_back((char)((reg << 4) | ((literalVal >> 8) & 0x0F)));
+          sectionNode.data.push_back((char)(literalVal & 0xFF));
+        }
+        else
+        {
+          cout << "Error st + reg ind with disp biger then 12b" << endl;
+          return -1;
+        }
       }
       else
       {
-        ret = process_symbol_disp(reg, operand); //ovo ne moze klasika jer moram u D da imam vrednost literala
-        // a ne razliku do njega
-        // pa mora da se baci push nekog regista pa u njega da se ucita 
+        // vrednost simbola?
+        // ako ne znam error
+        // ako veci od 12b error
+        // kad saznam upisi vrednost 
       }
-
       sectionNode.size += 4;
       this->assembler_help_file << "Store registar indirect with disp: " << operand << endl;
     }
@@ -1900,28 +1996,38 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
     else if (regex_search(operand, match, rx.memory_direct_operand_regex))
     {
       smatch match2;
+      bool big = false;
       bool literal = false;
-      int literalVal;
+      int literalVal = getValue(&literal, &big, &operand);
       cout << "St + memorijsko direktno" << match.str(0) << endl;
-      if (regex_search(operand, match2, rx.lit_regex))
-      {
-        literal = true;
-        literalVal = getLiteralValue(operand);
-      }
-      else if (regex_search(operand, match2, rx.sym_regex))
-      {
-        operand = match2.str(0);
-      }
       SectionTableNode &sectionNode = sections.at(this->current_section);
-      sectionNode.data.push_back((char)0x80);
-      sectionNode.data.push_back((char)0);
-      if (literal) {
-        sectionNode.data.push_back((char)((reg << 4) | ((literalVal >> 8) & 0xF)));
-        sectionNode.data.push_back((char)(literalVal & 0xFF));
-      } else {
-        process_symbol_disp(reg, operand); 
+      if (literal)
+      {
+        if (!big)
+        {
+          sectionNode.data.push_back((char)0x80);
+          sectionNode.data.push_back((char)0);
+          sectionNode.data.push_back((char)((reg << 4) | ((literalVal >> 8) & 0x0F)));
+          sectionNode.data.push_back((char)(literalVal & 0xFF));
+        }
+        else
+        {
+          /*
+          sectionNode.data.push_back((char)0x82);
+          sectionNode.data.push_back((char)0);
+          sectionNode.data.push_back((char)((reg << 4) | ((literalVal >> 8) & 0x0F)));
+          sectionNode.data.push_back((char)(literalVal & 0xFF));
+          //samo sto literalVal treba da mi bude rastojanje od bazena literala
+          */
+        }
       }
-
+      else
+      {
+        // vrednost simbola?
+        // ako ne znam error
+        // ako veci od 12b error
+        // kad saznam upisi vrednost 
+      }
       sectionNode.size += 4;
       this->assembler_help_file << "Store memory direct: " << endl;
     }
@@ -1939,8 +2045,6 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       int r = 0;
       string operand = match.str(0);
       smatch match2;
-      bool literal = false;
-      int literalVal;
       // izvucem iz [%r13 + operand] registar i operand
       //  broj registra odmah kodiram pa operand saljem na onaj process
       if (regex_search(operand, match2, rx.reg_regex))
@@ -1948,30 +2052,35 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
         r = getRegNum(match2.str(0));
       }
       operand = operand.substr(operand.find("+"), operand.size());
-      operand = operand.substr(1,operand.find("]")-1);
-      if (regex_search(operand, match2, rx.lit_regex))
-      {
-        literal = true;
-        literalVal = getLiteralValue(operand);
-      }
-      else if (regex_search(operand, match2, rx.sym_regex))
-      {
-        operand = match2.str(0);
-        cout << "operand je: " << operand;
-      }
+      operand = operand.substr(1, operand.find("]") - 1);
+      bool big = false;
+      bool literal = false;
+      int literalVal = getValue(&literal, &big, &operand);
       cout << "Ld + registarsko indirektno sa disp" << match.str(0) << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
-      sectionNode.data.push_back((char)0x92);
-      sectionNode.data.push_back((char)((reg << 4) | r));
       if (literal)
       {
-        sectionNode.data.push_back((char)((literalVal >> 8) & 0xFF));
-        sectionNode.data.push_back((char)(literalVal & 0xFF));
+        if (!big)
+        {
+          sectionNode.data.push_back((char)0x92);
+          sectionNode.data.push_back((char)((reg << 4) | r));
+          sectionNode.data.push_back((char)((literalVal >> 8) & 0xFF));
+          sectionNode.data.push_back((char)(literalVal & 0xFF));
+        }
+        else
+        {
+          cout << "Error ld + reg ind with disp biger then 12b" << endl;
+          return -1;
+        }
       }
       else
       {
-        ret = process_symbol_disp(0, operand);
+        // vrednost simbola?
+        // ako ne znam error
+        // ako veci od 12b error
+        // kad saznam upisi vrednost 
       }
+      cout << "Ld + registarsko indirektno sa disp" << match.str(0) << endl;
       sectionNode.size += 4;
       this->assembler_help_file << "Load registar indirect with disp: " << operand << endl;
     }
@@ -2005,67 +2114,86 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
     }
     else if (regex_search(operand, match, rx.absolute_operand_regex))
     {
-      cout << "Ovaj load??? " << endl;
       smatch match2;
-      bool literal = false;
-      int value = 0;
       string operand = match.str(0);
       operand = operand.substr(1, operand.size());
-      if (regex_search(operand, match2, rx.lit_regex))
-      {
-        cout << "operand: " << operand;
-        literal = true;
-        value = getLiteralValue(operand);
-      }
-      else if (regex_search(operand, match2, rx.sym_regex))
-      {
-        operand = match2.str(0);
-      }
+      bool big = false;
+      bool literal = false;
+      int literalVal = getValue(&literal, &big, &operand);
       cout << "Ld + apsolutno " << operand << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
-      sectionNode.data.push_back((char)0x91);
-      sectionNode.data.push_back((char)(reg << 4));
       if (literal)
       {
-        sectionNode.data.push_back((char)((value >> 8) & 0x0F));
-        sectionNode.data.push_back((char)(value & 0xFF));
+        if (!big)
+        {
+          sectionNode.data.push_back((char)0x91);
+          sectionNode.data.push_back((char)(reg << 4));
+          sectionNode.data.push_back((char)((literalVal >> 8) & 0x0F));
+          sectionNode.data.push_back((char)(literalVal & 0xFF));
+        }
+        else
+        {
+          //bazen literala
+          /*
+          sectionNode.data.push_back((char)0x92);
+          sectionNode.data.push_back((char)(reg << 4));
+          sectionNode.data.push_back((char)((literalVal >> 8) & 0x0F));
+          sectionNode.data.push_back((char)(literalVal & 0xFF));
+          // a u literalVal treba rastojanje do bazena literala
+          */
+        }
       }
       else
       {
-        ret = process_symbol_disp(0, operand);
+        // vrednost simbola?
+        
       }
+      
       sectionNode.size += 4;
       this->assembler_help_file << "Load memory apsolut : " << operand << endl;
     }
     else if (regex_search(operand, match, rx.memory_direct_operand_regex))
     {
       smatch match2;
-      bool literal = false;
       string operand = match.str(0);
-      cout << operand << endl;
-      if (regex_search(operand, match2, rx.lit_regex))
-      {
-        literal = true;
-        operand = match2.str(0);
-        cout << match2.str(1) << endl;
-      }
-      else if (regex_search(operand, match2, rx.sym_regex))
-      {
-        operand = match2.str(0);
-      }
+      bool big = false;
+      bool literal = false;
+      int literalVal = getValue(&literal, &big, &operand);
       cout << "Ld + memory direct " << operand << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
-      sectionNode.data.push_back((char)0x92);
-      sectionNode.data.push_back((char)(reg << 4));
       if (literal)
       {
-        sectionNode.data.push_back((char)((getLiteralValue(operand) >> 8) & 0xFF));
-        sectionNode.data.push_back((char)(getLiteralValue(operand) & 0xFF));
+        if (!big)
+        {
+          sectionNode.data.push_back((char)0x92);
+          sectionNode.data.push_back((char)(reg << 4));
+          sectionNode.data.push_back((char)((literalVal >> 8) & 0x0F));
+          sectionNode.data.push_back((char)(literalVal & 0xFF));
+        }
+        else
+        {
+          //bazen literala
+          /*
+          sectionNode.data.push_back((char)0x92);
+          sectionNode.data.push_back((char)(reg << 4));
+          sectionNode.data.push_back((char)((literalVal >> 8) & 0x0F));
+          sectionNode.data.push_back((char)(literalVal & 0xFF));
+          // a u literalVal treba rastojanje do bazena literala
+          Ali meni kad je vece onda su dve instrukcije prvo ovo pa
+          sectionNode.data.push_back((char)0x92);
+          sectionNode.data.push_back((char)(reg << 4));
+          sectionNode.data.push_back((char)(0x00));
+          sectionNode.data.push_back((char)(0x00));
+          location_counter = location_counter + 4; //ali se onda ne poklapa sa prvim prolazom?
+          */
+        }
       }
       else
       {
-        ret = process_symbol_disp(0, operand);
+        // vrednost simbola?
+        
       }
+
       sectionNode.size += 4;
       this->assembler_help_file << "Load memory direct: " << operand << endl;
     }
