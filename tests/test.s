@@ -1,13 +1,17 @@
+.extern handler
+.section my_code_main
+ld $init_sp, %sp
+ld $handler, %r1
+csrwr %r1, %handler
+ld $0x1, %r1
+st %r1, tim_cfg
+wait:
+ld my_counter, %r1
+ld $5, %r2
+bne %r1, %r2, wait
+halt
+.global my_counter
 .section my_data
-my_isr_terminal:
-st %r1, my_counter
-st %r4, %r12
-st %r4, [%r12]
-ld %r2, %r3
-ld [%r12], %r4
-ld [%r12 + 15], %r4
-ld [%r12 + my_counter], %r4
-ld $3, %r2
-ld 0xF3, %r2
-
+my_counter:
+.word 0
 .end

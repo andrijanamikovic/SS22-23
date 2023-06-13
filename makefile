@@ -19,7 +19,7 @@ AS1: assembler.o
 	./assembler -o main.o main.s
 
 AS2: assembler.o
-	./assembler -o ivt.o ivt.s
+	./assembler -o handlers.o handlers.s
 
 AS3: assembler.o
 	./assembler -o math.o math.s
@@ -34,7 +34,7 @@ AS6: assembler.o
 	./assembler -o isr_timer.o isr_timer.s
 
 AS7: assembler.o
-	./assembler -o isr_user0.o isr_user0.s
+	./assembler -o isr_software.o isr_software.s
 
 AS8: assembler.o
 	./assembler -o test.o test.s

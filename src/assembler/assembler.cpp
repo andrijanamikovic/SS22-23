@@ -5,11 +5,11 @@
 int getRegNum(string r)
 {
   int ret = 0;
-  if (r == "pc")
+  if (r == "%pc")
   {
     ret = 15;
   }
-  else if (r == "sp")
+  else if (r == "%sp")
   {
     ret = 14;
   }
@@ -958,6 +958,9 @@ int Assembler::iret_inst_second(smatch match)
   sectionNode.data.push_back((int)(0x00));
   sectionNode.data.push_back((char)(0x04));
 
+  //mozda treba da se upisuje u cause 0 kad se vrati mozda?
+  //zato sto int upsije 4 u cause registar 
+
   sectionNode.size += 8;
   return ret;
 }
@@ -984,6 +987,9 @@ int Assembler::call_inst_second(smatch match)
   ret = process_symbol_disp(0, match.str(2));
   // ovde treba da obradim da mi operand stavlja u bazen literala
   //  i onda dips u najniza 12 bita do toga u bazenu literala
+  // da ako ne moze da mi stane simbol u 12b
+  // ja imam ispod iskodiran jmp 4
+  // a ispod njega stavim vrednost tog simbola u labeli, a u call u disp stavim 8
   sectionNode.size += 4;
   location_counter += 4;
   return ret;
@@ -1048,6 +1054,7 @@ int Assembler::jmp_inst_second(smatch match)
   ret = process_symbol_disp(0, match.str(2));
   // ovde treba da obradim da mi operand stavlja u bazen literala
   //  i onda dips u najniza 12 bita do toga u bazenu literala
+  // ista logika kao call samo ne ide pc na stek
   sectionNode.size += 4;
   location_counter += 4;
   return ret;
@@ -1601,7 +1608,6 @@ int Assembler::ld_inst_second(smatch match)
   string operands = match.str(2);
   string operand = operands.substr(0, operands.find(","));
   string reg = operands.substr(operands.find(",") + 1, operands.size());
-  cout << "ld " << operand << ", " << reg << endl;
   int val1 = getRegNum(reg);
   assembler_help_file << "ld sa operandom " << operand << endl;
   ret = process_operand(operand, val1, true);
@@ -1849,7 +1855,9 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       }
       else
       {
-        ret = process_symbol_disp(0, operand);
+        ret = process_symbol_disp(reg, operand); //ovo ne moze klasika jer moram u D da imam vrednost literala
+        // a ne razliku do njega
+        // pa mora da se baci push nekog regista pa u njega da se ucita 
       }
 
       sectionNode.size += 4;
@@ -1911,7 +1919,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
         sectionNode.data.push_back((char)((reg << 4) | ((literalVal >> 8) & 0xF)));
         sectionNode.data.push_back((char)(literalVal & 0xFF));
       } else {
-        process_symbol_disp(reg, operand);
+        process_symbol_disp(reg, operand); 
       }
 
       sectionNode.size += 4;
@@ -1997,14 +2005,17 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
     }
     else if (regex_search(operand, match, rx.absolute_operand_regex))
     {
+      cout << "Ovaj load??? " << endl;
       smatch match2;
       bool literal = false;
+      int value = 0;
       string operand = match.str(0);
       operand = operand.substr(1, operand.size());
       if (regex_search(operand, match2, rx.lit_regex))
       {
+        cout << "operand: " << operand;
         literal = true;
-        operand = match2.str(0);
+        value = getLiteralValue(operand);
       }
       else if (regex_search(operand, match2, rx.sym_regex))
       {
@@ -2016,8 +2027,8 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       sectionNode.data.push_back((char)(reg << 4));
       if (literal)
       {
-        sectionNode.data.push_back((char)((getLiteralValue(operand) >> 8) & 0x0F));
-        sectionNode.data.push_back((char)(getLiteralValue(operand) & 0xFF));
+        sectionNode.data.push_back((char)((value >> 8) & 0x0F));
+        sectionNode.data.push_back((char)(value & 0xFF));
       }
       else
       {

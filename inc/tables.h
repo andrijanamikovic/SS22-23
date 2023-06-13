@@ -72,7 +72,7 @@ enum INSTRUCTIONS{
   RET,
   IRET,
   PUSH = 0x81,
-  POP = 0x81
+  POP = 0x93
 };
 
 
