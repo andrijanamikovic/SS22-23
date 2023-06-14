@@ -30,6 +30,10 @@ class Assembler {
     map<string,SectionTableNode> sections;
     map<string,SymbolTableNode> symbols;
     map<string,RelocationTableNode> relocations;
+    typedef map<string, LiteralPoolTable> poolData;
+    map<string, poolData> pool;
+    
+    int pool_distance;
     string current_section;
     int current_section_id;
     ofstream* binary_output;
@@ -121,5 +125,7 @@ class Assembler {
     bool isLiteral(string literal);
     int getLiteralValue(string literal);
     int getValue(bool *literal, bool *big, string *operand);
+    void process_literal_first(string operand, string current_section);
+    void process_literal_second(string operand);
 };
 #endif 

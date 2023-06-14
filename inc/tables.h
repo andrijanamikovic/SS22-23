@@ -15,8 +15,8 @@ class SymbolTableNode {
     bool local;
     bool defined;
     bool extern_sym;
-    int offset;
     int symbol_id;
+    bool used = false; //za bazen literala
     SymbolTableNode(int symbol_id, int sec_id, bool is_local, bool is_defined, bool is_extern);
     SymbolTableNode();
 };
@@ -44,6 +44,15 @@ class SectionTableNode {
     vector<int> data;
     SectionTableNode(string name, int address, int size, int section_id);
     SectionTableNode();
+};
+
+class LiteralPoolTable {
+  public:
+  string name;
+  int offset;
+  bool defined = false;
+  LiteralPoolTable(string name, int offset);
+  LiteralPoolTable();
 };
 
 enum INSTRUCTIONS{

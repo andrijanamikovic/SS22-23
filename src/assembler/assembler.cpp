@@ -264,6 +264,20 @@ int Assembler::process_label(string label)
       symbol.section_id = this->_section_id;
       symbol.section_name = this->current_section;
       symbol.name = label;
+      poolData &current_pool = pool.at(current_section);
+      if (symbol.used)
+      {
+        if (current_pool.find(symbol.name) == current_pool.end())
+        {
+          LiteralPoolTable *literal = new LiteralPoolTable(symbol.name, location_counter);
+          current_pool.insert({symbol.name, *literal});
+        }
+        else
+        {
+          LiteralPoolTable &literal = current_pool.at(symbol.name);
+          literal.offset = location_counter;
+        }
+      }
     }
   }
   return 0;
@@ -653,11 +667,13 @@ int Assembler::process_section_dir(smatch match)
   }
   SectionTableNode *newSection = new SectionTableNode(section_name, this->location_counter, 0, this->_section_id);
   sections.insert({section_name, *newSection});
+  poolData data;
+  pool.insert({section_name, data}); //meni je ovde druga mapa prazna, ne znam dal to moze tako
 
   this->current_section = section_name;
   this->location_counter = 0;
+  this->pool_distance = 0;
   this->current_section_id = _section_id;
-
   return ret;
 }
 int Assembler::process_word_dir(smatch match)
@@ -716,8 +732,7 @@ int Assembler::word_dir_second(smatch match)
           temp = (int)((0 >> 16) & 0xFFFF);
           sectionNode.data.push_back(temp);
 
-          symbol.value = 0;
-          symbol.offset = current_line;
+          symbol.value = current_line;
           symbol.section_id = current_section_id;
           symbol.section_name = current_section;
           symbol.section_name = current_section;
@@ -1000,10 +1015,41 @@ int Assembler::process_call_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
+  string operand = match.str(2);
+  process_literal_first(operand, current_section);
   location_counter += 4;
 
   return ret;
 }
+
+void Assembler::process_literal_first(string operand, string current_section) {
+  bool big = true;
+  bool literal = false;
+  int literalVal = getValue(&literal, &big, &operand);
+  poolData &current = pool.at(current_section);
+  if (literal)
+  {
+    if (big)
+    {
+      if (current.find(operand) == current.end())
+      {
+        LiteralPoolTable *literal = new LiteralPoolTable(operand, 0);
+        current.insert({operand, *literal});
+      }
+    }
+  }
+  else
+  {
+    if (symbols.find(operand) != symbols.end())
+    {
+      SymbolTableNode &symbol = symbols.at(operand);
+      LiteralPoolTable *literal = new LiteralPoolTable(operand, symbol.value);
+      symbol.used = true;
+      current.insert({operand, *literal});
+    }
+  }
+}
+
 int Assembler::call_inst_second(smatch match)
 {
   int ret = 0;
@@ -1024,7 +1070,10 @@ int Assembler::call_inst_second(smatch match)
     }
     else
     {
-      // bazen literala call literal
+      cout << "Call big literal" << endl;
+      if (pool.find(operand) != pool.end()) {
+        
+      }
     }
   }
   else
@@ -1954,7 +2003,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
         // vrednost simbola?
         // ako ne znam error
         // ako veci od 12b error
-        // kad saznam upisi vrednost 
+        // kad saznam upisi vrednost
       }
       sectionNode.size += 4;
       this->assembler_help_file << "Store registar indirect with disp: " << operand << endl;
@@ -2026,7 +2075,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
         // vrednost simbola?
         // ako ne znam error
         // ako veci od 12b error
-        // kad saznam upisi vrednost 
+        // kad saznam upisi vrednost
       }
       sectionNode.size += 4;
       this->assembler_help_file << "Store memory direct: " << endl;
@@ -2078,7 +2127,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
         // vrednost simbola?
         // ako ne znam error
         // ako veci od 12b error
-        // kad saznam upisi vrednost 
+        // kad saznam upisi vrednost
       }
       cout << "Ld + registarsko indirektno sa disp" << match.str(0) << endl;
       sectionNode.size += 4;
@@ -2133,7 +2182,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
         }
         else
         {
-          //bazen literala
+          // bazen literala
           /*
           sectionNode.data.push_back((char)0x92);
           sectionNode.data.push_back((char)(reg << 4));
@@ -2146,9 +2195,8 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       else
       {
         // vrednost simbola?
-        
       }
-      
+
       sectionNode.size += 4;
       this->assembler_help_file << "Load memory apsolut : " << operand << endl;
     }
@@ -2172,7 +2220,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
         }
         else
         {
-          //bazen literala
+          // bazen literala
           /*
           sectionNode.data.push_back((char)0x92);
           sectionNode.data.push_back((char)(reg << 4));
@@ -2191,7 +2239,6 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       else
       {
         // vrednost simbola?
-        
       }
 
       sectionNode.size += 4;
