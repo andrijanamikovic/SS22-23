@@ -68,14 +68,11 @@ bool isBig(int literalVal)
   }
 }
 
-int Assembler::getValue(bool *literal, bool *big, string *operand)
+long Assembler::getValue(bool *literal, bool *big, string *operand)
 {
   int ret = -1;
-  int literalVal = 0;
+  long literalVal = 0;
   smatch match2;
-  cout << "Get valll " << endl;
-
-  // sta mi je operand dal ga prebacim u broj?
   if (regex_search(*operand, match2, rx.lit_regex))
   {
     literalVal = getLiteralValue(*operand);
@@ -94,6 +91,58 @@ int Assembler::getValue(bool *literal, bool *big, string *operand)
   }
   return literalVal;
 }
+
+void Assembler::savePoolData(string current_section, SectionTableNode *current_section_node)
+{
+  if (pool.find(current_section) == pool.end())
+  {
+    return;
+  }
+  printSectionTable();
+  poolData &data = pool.at(current_section);
+  cout << "End of section save the pool " << endl;
+  for (auto &it : data)
+  {
+    LiteralPoolTable &second = it.second;
+    if (!second.stored)
+    {
+      current_section_node->data.push_back((char)(second.name >> 32));
+      current_section_node->data.push_back((char)(second.name >> 16));
+      current_section_node->data.push_back((char)(second.name >> 8));
+      current_section_node->data.push_back((char)(second.name));
+      if (!second.defined)
+      {
+        second.offset = location_counter - 4;
+        second.defined = true;
+      }
+      location_counter += 4;
+      current_section_node->size += 4;
+    }
+  }
+  printSectionTable();
+}
+
+void Assembler::calculatePoolData(string current_section, SectionTableNode *current_section_node)
+{
+  if (pool.find(current_section) == pool.end())
+  {
+    return;
+  }
+  poolData &data = pool.at(current_section);
+  cout << "End of section or size too big calculate offset " << endl;
+  for (auto &it : data)
+  {
+    LiteralPoolTable &second = it.second;
+    if (!second.defined)
+    {
+      second.offset = location_counter - 4;
+      second.defined = true;
+    }
+    location_counter += 4;
+    current_section_node->size += 4;
+  }
+}
+
 Assembler::Assembler()
 {
   this->_symbol_id = 0;
@@ -211,11 +260,16 @@ int Assembler::process()
   }
   this->end = false;
   this->location_counter = 0;
+  this->location_counter = 0;
+  this->current_line = 0;
+  this->current_section = "UND";
+  this->current_section_id = 0;
   return this->process_second_pass();
 }
 
 int Assembler::process_second_pass()
 {
+  cout << "Drugi kurg assemeblera" << endl;
   int ret = 0;
   for (string line : lines)
   {
@@ -278,14 +332,14 @@ int Assembler::process_label(string label)
       poolData &current_pool = pool.at(current_section);
       if (symbol.used)
       {
-        if (current_pool.find(symbol.value) == current_pool.end())
+        if (current_pool.find(label) == current_pool.end())
         {
           LiteralPoolTable *literal = new LiteralPoolTable(symbol.value, location_counter);
-          current_pool.insert({symbol.value, *literal});
+          current_pool.insert({label, *literal});
         }
         else
         {
-          LiteralPoolTable &literal = current_pool.at(symbol.value);
+          LiteralPoolTable &literal = current_pool.at(label);
           literal.offset = location_counter;
         }
       }
@@ -296,7 +350,7 @@ int Assembler::process_label(string label)
 
 int Assembler::process_command(string command, bool first)
 {
-  // cout << "Zove proces command:" << command << endl;
+  cout << "Zove proces command: " << command << "First? " << first << endl;
   smatch match;
   int ret = 0;
   if (regex_search(command, match, rx.extern_dir))
@@ -313,6 +367,8 @@ int Assembler::process_command(string command, bool first)
   {
     if (first)
       ret = process_section_dir(match);
+    else
+      ret = section_dir_second(match);
   }
   else if (regex_search(command, match, rx.word_dir))
   {
@@ -368,7 +424,9 @@ int Assembler::process_command(string command, bool first)
     if (first)
       ret = process_call_inst(match);
     else
+    {
       ret = call_inst_second(match);
+    }
   }
   else if (regex_search(command, match, rx.ret_inst))
   {
@@ -565,17 +623,18 @@ void Assembler::printSectionTable()
   }
 }
 
-void Assembler::printLiteralPool(){
+void Assembler::printLiteralPool()
+{
   this->assembler_help_file << endl
                             << "Literal pool: " << endl;
-  this->assembler_help_file << "Section_name  "<< endl;
+  this->assembler_help_file << "Section_name  " << endl;
   for (auto it = pool.cbegin(); it != pool.end(); ++it)
   {
     this->assembler_help_file << it->first << endl;
-    this->assembler_help_file << "name  offset  used" << endl;
+    this->assembler_help_file << "key name  offset  used" << endl;
     for (auto c : it->second)
     {
-      assembler_help_file << c.second.name<<" "<<c.second.offset<<" "<<c.second.defined<<endl;
+      assembler_help_file << c.first << " " << c.second.name << " " << c.second.offset << " " << c.second.defined << endl;
     }
     assembler_help_file << endl;
   }
@@ -681,15 +740,17 @@ int Assembler::process_section_dir(smatch match)
     {
       SectionTableNode &current_section_node = sections.at(this->current_section);
       // current_section_node.size = current_section_node.data.size();
-      // current_section_node.size = location_counter;
+      current_section_node.size = location_counter;
       assembler_help_file << "End of section: " << current_section_node.name << " with size: " << current_section_node.size << endl;
+      calculatePoolData(this->current_section, &current_section_node);
     }
     else
     {
-      SectionTableNode *current_section_node = new SectionTableNode(this->current_section, this->location_counter, 0, this->current_section_id);
-      // current_section_node.size = location_counter;
-      sections.insert({this->current_section, *current_section_node});
-      assembler_help_file << "End of section: " << current_section_node->name << " with size: " << current_section_node->size << endl;
+      SectionTableNode current_section_node = SectionTableNode(this->current_section, this->location_counter, 0, this->current_section_id);
+      current_section_node.size = location_counter;
+      sections.insert({this->current_section, current_section_node});
+      assembler_help_file << "End of section: " << current_section_node.name << " with size: " << current_section_node.size << endl;
+      calculatePoolData(this->current_section, &current_section_node);
     }
   }
   SectionTableNode *newSection = new SectionTableNode(section_name, this->location_counter, 0, this->_section_id);
@@ -702,6 +763,17 @@ int Assembler::process_section_dir(smatch match)
   this->pool_distance = 0;
   this->current_section_id = _section_id;
   return ret;
+}
+
+int Assembler::section_dir_second(smatch match)
+{
+  string section_label = ((string)match[0]);
+  string section_name = section_label.substr(section_label.find(" "), section_label.size());
+  section_label = section_label.substr(0, section_label.find(" "));
+  SectionTableNode &current_section_node = sections.at(this->current_section);
+  savePoolData(this->current_section, &current_section_node);
+  this->current_section = section_name;
+  return 0;
 }
 int Assembler::process_word_dir(smatch match)
 {
@@ -864,6 +936,11 @@ int Assembler::process_end_dir(smatch match)
 {
   int ret = 0;
   assembler_help_file << ".end " << endl;
+  if (sections.find(this->current_section) != sections.end())
+  {
+    SectionTableNode &current_section_node = sections.at(this->current_section);
+    calculatePoolData(this->current_section, &current_section_node);
+  }
   this->end = true;
   return ret;
 }
@@ -875,14 +952,17 @@ int Assembler::end_dir_second(smatch match)
   {
     if (sections.find(this->current_section) == sections.end())
     {
-      SectionTableNode *current_section_node = new SectionTableNode(this->current_section, this->location_counter, 0, this->current_section_id);
-      sections.insert({this->current_section, *current_section_node});
-      assembler_help_file << ".end of section: " << current_section_node->name << " with size: " << current_section_node->size << endl;
+      SectionTableNode current_section_node = SectionTableNode(this->current_section, this->location_counter, 0, this->current_section_id);
+      current_section_node.size = location_counter;
+      savePoolData(this->current_section, &current_section_node);
+      sections.insert({this->current_section, current_section_node});
+      assembler_help_file << ".end of section: " << current_section_node.name << " with size: " << current_section_node.size << endl;
     }
     else
     {
       SectionTableNode &current_section_node = sections.at(this->current_section);
-      // current_section_node.size = location_counter;
+      current_section_node.size = location_counter;
+      savePoolData(this->current_section, &current_section_node);
       assembler_help_file << ".end of section: " << current_section_node.name << " with size: " << current_section_node.size << endl;
     }
   }
@@ -960,15 +1040,6 @@ int Assembler::process_int_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
-
-  // push status; push pc; cause<=4; status<=status&(~0x1); pc<=handle;
-  // push r0;
-  // push r15;
-  // ld r2, #4
-  // ???
-  // ld r15, r1
-  // status mi je r0, cause mi je r2 handler mi je r1
-  // da li ovo znaci da ja treba da maskiram prekide da bi se to izvrsilo atomicno
   location_counter += 4;
   return ret;
 }
@@ -1045,7 +1116,7 @@ int Assembler::process_call_inst(smatch match)
   string operand = match.str(2);
   process_literal_first(operand, current_section);
   location_counter += 4;
-
+  assembler_help_file << "Call inst first " << endl;
   return ret;
 }
 
@@ -1059,10 +1130,10 @@ void Assembler::process_literal_first(string operand, string current_section)
   {
     if (big)
     {
-      if (current.find(literalVal) == current.end())
+      if (current.find(operand) == current.end())
       {
         LiteralPoolTable *literal = new LiteralPoolTable(literalVal, 0);
-        current.insert({literalVal, *literal});
+        current.insert({operand, *literal});
       }
     }
   }
@@ -1073,7 +1144,7 @@ void Assembler::process_literal_first(string operand, string current_section)
       SymbolTableNode &symbol = symbols.at(operand);
       LiteralPoolTable *literal = new LiteralPoolTable(symbol.value, symbol.value);
       symbol.used = true;
-      current.insert({symbol.value, *literal});
+      current.insert({operand, *literal});
     }
   }
 }
@@ -1081,31 +1152,30 @@ void Assembler::process_literal_first(string operand, string current_section)
 int Assembler::call_inst_second(smatch match)
 {
   int ret = 0;
+  assembler_help_file << "Call inst second " << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
   bool big = true;
   string operand = match.str(2);
   bool literal = false;
-  int literalVal = getValue(&literal, &big, &operand);
+  long literalVal = getValue(&literal, &big, &operand);
   if (literal)
   {
     if (!big)
     {
-      cout << "Call not big literal" << endl;
-      sectionNode.data.push_back((char)(0x20 | 0x0));
+      sectionNode.data.push_back((char)(0x20));
       sectionNode.data.push_back((char)0x00);
       sectionNode.data.push_back((char)((0 << 4) | ((literalVal >> 8) & 0x0F)));
       sectionNode.data.push_back((char)(literalVal & 0xFF));
     }
     else
     {
-      cout << "Call big literal" << endl;
       poolData &current_pool = pool.at(current_section);
-      if (current_pool.find(literalVal) != current_pool.end())
+      if (current_pool.find(operand) != current_pool.end())
       {
-        LiteralPoolTable &literal = current_pool.at(literalVal);
-        int disp = literal.offset - location_counter;
-        sectionNode.data.push_back((char)(0x21 | 0xF));
-        sectionNode.data.push_back((char)0x00);
+        LiteralPoolTable &literal_current = current_pool.at(operand);
+        int disp = literal_current.offset - location_counter;
+        sectionNode.data.push_back((char)(0x21));
+        sectionNode.data.push_back((char)0xF0);
         sectionNode.data.push_back((char)((0 << 4) | ((disp >> 8) & 0x0F)));
         sectionNode.data.push_back((char)(disp & 0xFF));
       }
@@ -1122,17 +1192,17 @@ int Assembler::call_inst_second(smatch match)
       int val = symbols.at(operand).value;
       if (isBig(val))
       {
-        cout << "Call big symbol" << endl;
         poolData &current_pool = pool.at(current_section);
-        LiteralPoolTable &literal = current_pool.at(val);
+        LiteralPoolTable &literal = current_pool.at(operand);
         int disp = literal.offset - location_counter;
-        sectionNode.data.push_back((char)(0x21 | 0xF));
-        sectionNode.data.push_back((char)0x00);
+        sectionNode.data.push_back((char)(0x21));
+        sectionNode.data.push_back((char)0xF0);
         sectionNode.data.push_back((char)((0 << 4) | ((disp >> 8) & 0x0F)));
         sectionNode.data.push_back((char)(disp & 0xFF));
-      } else {
-        cout << "Call not big symbol" << endl;
-        sectionNode.data.push_back((char)(0x20 | 0x0));
+      }
+      else
+      {
+        sectionNode.data.push_back((char)(0x20));
         sectionNode.data.push_back((char)0x00);
         sectionNode.data.push_back((char)((0 << 4) | ((val >> 8) & 0x0F)));
         sectionNode.data.push_back((char)(val & 0xFF));
@@ -1196,18 +1266,20 @@ int Assembler::process_jmp_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
+  string operand = match.str(2);
+  process_literal_first(operand, current_section);
   location_counter += 4;
   return ret;
 }
 int Assembler::jmp_inst_second(smatch match)
 {
   int ret = 0;
-  SectionTableNode &sectionNode = sections.at(this->current_section);
   assembler_help_file << ".jmp with operand: " << match.str(2) << endl;
-  bool big = false;
+  SectionTableNode &sectionNode = sections.at(this->current_section);
+  bool big = true;
   string operand = match.str(2);
   bool literal = false;
-  int literalVal = getValue(&literal, &big, &operand);
+  long literalVal = getValue(&literal, &big, &operand);
   if (literal)
   {
     if (!big)
@@ -1219,18 +1291,46 @@ int Assembler::jmp_inst_second(smatch match)
     }
     else
     {
-      // bazen literala jmp literal
+      poolData &current_pool = pool.at(current_section);
+      if (current_pool.find(operand) != current_pool.end())
+      {
+        LiteralPoolTable &literal_current = current_pool.at(operand);
+        int disp = literal_current.offset - location_counter;
+        sectionNode.data.push_back((char)(0x38));
+        sectionNode.data.push_back((char)0xF0);
+        sectionNode.data.push_back((char)((0 << 4) | ((disp >> 8) & 0x0F)));
+        sectionNode.data.push_back((char)(disp & 0xFF));
+      }
     }
   }
   else
   {
-    // vrednost simbola?
-    // ako ne znam?
-    // ako znam jer on onda odmah u bazenu literala kad je definisan? nije? samo u tabeli?
-    // proverim dal je veca od 12 ako nije onda odmah, a ako jeste onda bazen literala?
+    if (symbols.find(operand) == symbols.end())
+    {
+      // Error?
+    }
+    else
+    {
+      int val = symbols.at(operand).value;
+      if (isBig(val))
+      {
+        poolData &current_pool = pool.at(current_section);
+        LiteralPoolTable &literal = current_pool.at(operand);
+        int disp = literal.offset - location_counter;
+        sectionNode.data.push_back((char)(0x38));
+        sectionNode.data.push_back((char)0xF0);
+        sectionNode.data.push_back((char)((0 << 4) | ((disp >> 8) & 0x0F)));
+        sectionNode.data.push_back((char)(disp & 0xFF));
+      }
+      else
+      {
+        sectionNode.data.push_back((char)(0x30));
+        sectionNode.data.push_back((char)0x00);
+        sectionNode.data.push_back((char)((0 << 4) | ((val >> 8) & 0x0F)));
+        sectionNode.data.push_back((char)(val & 0xFF));
+      }
+    }
   }
-  // ret = process_symbol_disp(JMP, 0, match.str(2), sectionNode);
-
   sectionNode.size += 4;
   location_counter += 4;
   return ret;
@@ -1244,9 +1344,26 @@ int Assembler::process_beq_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
+  string label = match.str(2);
+  string r1;
+  string r2;
+  string operand;
+  GetOperandBJmps(label, &r1, &r2, &operand);
+  process_literal_first(operand, current_section);
   location_counter += 4;
 
   return ret;
+}
+
+void Assembler::GetOperandBJmps(string label, string *r1, string *r2, string *operand) {
+
+  string reg = label.substr(label.find(" ") + 1, label.size());
+  cout << reg;
+   *r1 = reg.substr(0, reg.find(","));
+   *r2 = reg.substr(reg.find(",") + 1, reg.find(","));
+   *operand = reg.substr(reg.find(",") + 1, reg.size());
+   string help = *operand;
+  *operand = help.substr(help.find(",") + 1, help.size());
 }
 
 int Assembler::beq_inst_second(smatch match)
@@ -1255,42 +1372,68 @@ int Assembler::beq_inst_second(smatch match)
   string int_label = ((string)match[0]);
   int val1 = 0;
   int val2 = 0;
-  string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
-  string r1 = reg.substr(0, reg.find(","));
-  string r2 = reg.substr(reg.find(",") + 1, reg.find(","));
-  string operand = reg.substr(reg.find(",") + 1, reg.size());
-  operand = operand.substr(operand.find(",") + 1, operand.size());
+  string r1;
+  string r2;
+  string operand;
+  GetOperandBJmps(int_label, &r1, &r2, &operand);
   val1 = getRegNum(r1);
   val2 = getRegNum(r2);
   assembler_help_file << "beq: " << val1 << " , " << val2 << " , " << operand << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
-  bool big = false;
+  bool big = true;
   bool literal = false;
-  int literalVal = getValue(&literal, &big, &operand);
+  long literalVal = getValue(&literal, &big, &operand);
   if (literal)
   {
     if (!big)
     {
-      sectionNode.data.push_back((char)(0x31 << 4) | 0x0);
-      sectionNode.data.push_back((char)(val1 << 4) | val2);
-      sectionNode.data.push_back((char)((0 << 4) | ((literalVal >> 8) & 0x0F)));
+      sectionNode.data.push_back((char)(0x31));
+      sectionNode.data.push_back((char)(val1 & 0x0F));
+      sectionNode.data.push_back((char)((val2 << 4) | ((literalVal >> 8) & 0x0F)));
       sectionNode.data.push_back((char)(literalVal & 0xFF));
     }
     else
     {
-      // bazen literala beq literal
+      poolData &current_pool = pool.at(current_section);
+      if (current_pool.find(operand) != current_pool.end())
+      {
+        LiteralPoolTable &literal_current = current_pool.at(operand);
+        int disp = literal_current.offset - location_counter;
+        sectionNode.data.push_back((char)(0x39));
+        sectionNode.data.push_back((char)(0xF << 4) | val1);
+        sectionNode.data.push_back((char)((val2 << 4) | ((disp >> 8) & 0x0F)));
+        sectionNode.data.push_back((char)(disp & 0xFF));
+      }
     }
   }
   else
   {
-    // vrednost simbola?
-    // ako ne znam?
-    // ako znam jer on onda odmah u bazenu literala kad je definisan? nije? samo u tabeli?
-    // proverim dal je veca od 12 ako nije onda odmah, a ako jeste onda bazen literala?
+    if (symbols.find(operand) == symbols.end())
+    {
+      // Error?
+    }
+    else
+    {
+      int val = symbols.at(operand).value;
+      if (isBig(val))
+      {
+        poolData &current_pool = pool.at(current_section);
+        LiteralPoolTable &literal = current_pool.at(operand);
+        int disp = literal.offset - location_counter;
+        sectionNode.data.push_back((char)(0x39));
+        sectionNode.data.push_back((char)(0xF << 4) | val1);
+        sectionNode.data.push_back((char)((val2 << 4) | ((disp >> 8) & 0x0F)));
+        sectionNode.data.push_back((char)(disp & 0xFF));
+      }
+      else
+      {
+        sectionNode.data.push_back((char)(0x31));
+        sectionNode.data.push_back((char)(val1 & 0x0F));
+        sectionNode.data.push_back((char)((val2 << 4) | ((literalVal >> 8) & 0x0F)));
+        sectionNode.data.push_back((char)(literalVal & 0xFF));
+      }
+    }
   }
-  // ret = process_symbol_disp(BEQ, val1, match.str(2), sectionNode);
-  // sad ovde treba u najnizih 12b da spakujem operand tj adresu, ili odstojanje od
-  // bazena literala gde se nalazi tacna adresa
   sectionNode.size += 4;
   location_counter += 4;
   return ret;
@@ -1304,6 +1447,12 @@ int Assembler::process_bne_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
+  string label = match.str(2);
+  string r1;
+  string r2;
+  string operand;
+  GetOperandBJmps(label, &r1, &r2, &operand);
+  process_literal_first(operand, current_section);
   location_counter += 4;
 
   return ret;
@@ -1311,45 +1460,71 @@ int Assembler::process_bne_inst(smatch match)
 int Assembler::bne_inst_second(smatch match)
 {
   int ret = 0;
-  string int_label = ((string)match[0]);
+   string int_label = ((string)match[0]);
   int val1 = 0;
   int val2 = 0;
-  string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
-  string r1 = reg.substr(0, reg.find(","));
-  string r2 = reg.substr(reg.find(",") + 1, reg.find(","));
-  string operand = reg.substr(reg.find(",") + 1, reg.size());
-  operand = operand.substr(operand.find(",") + 1, operand.size());
+  string r1;
+  string r2;
+  string operand;
+  GetOperandBJmps(int_label, &r1, &r2, &operand);
   val1 = getRegNum(r1);
   val2 = getRegNum(r2);
   assembler_help_file << "bne: " << val1 << " , " << val2 << " , " << operand << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
-  bool big = false;
+  bool big = true;
   bool literal = false;
-  int literalVal = getValue(&literal, &big, &operand);
+  long literalVal = getValue(&literal, &big, &operand);
   if (literal)
   {
     if (!big)
     {
-      sectionNode.data.push_back((char)(0x32 << 4) | 0x0);
-      sectionNode.data.push_back((char)(val1 << 4) | val2);
-      sectionNode.data.push_back((char)((0 << 4) | ((literalVal >> 8) & 0x0F)));
+      sectionNode.data.push_back((char)(0x32));
+      sectionNode.data.push_back((char)(val1 & 0x0F));
+      sectionNode.data.push_back((char)((val2 << 4) | ((literalVal >> 8) & 0x0F)));
       sectionNode.data.push_back((char)(literalVal & 0xFF));
     }
     else
     {
-      // bazen literala bne literal
+      poolData &current_pool = pool.at(current_section);
+      if (current_pool.find(operand) != current_pool.end())
+      {
+        LiteralPoolTable &literal_current = current_pool.at(operand);
+        int disp = literal_current.offset - location_counter;
+        sectionNode.data.push_back((char)(0x3A));
+        sectionNode.data.push_back((char)(0xF << 4) | val1);
+        sectionNode.data.push_back((char)((val2 << 4) | ((disp >> 8) & 0x0F)));
+        sectionNode.data.push_back((char)(disp & 0xFF));
+      }
     }
   }
   else
   {
-    // vrednost simbola?
-    // ako ne znam?
-    // ako znam jer on onda odmah u bazenu literala kad je definisan? nije? samo u tabeli?
-    // proverim dal je veca od 12 ako nije onda odmah, a ako jeste onda bazen literala?
+    if (symbols.find(operand) == symbols.end())
+    {
+      // Error?
+    }
+    else
+    {
+      int val = symbols.at(operand).value;
+      if (isBig(val))
+      {
+        poolData &current_pool = pool.at(current_section);
+        LiteralPoolTable &literal = current_pool.at(operand);
+        int disp = literal.offset - location_counter;
+        sectionNode.data.push_back((char)(0x3A));
+        sectionNode.data.push_back((char)(0xF << 4) | val1);
+        sectionNode.data.push_back((char)((val2 << 4) | ((disp >> 8) & 0x0F)));
+        sectionNode.data.push_back((char)(disp & 0xFF));
+      }
+      else
+      {
+        sectionNode.data.push_back((char)(0x32));
+        sectionNode.data.push_back((char)(val1 & 0x0F));
+        sectionNode.data.push_back((char)((val2 << 4) | ((literalVal >> 8) & 0x0F)));
+        sectionNode.data.push_back((char)(literalVal & 0xFF));
+      }
+    }
   }
-  // ret = process_symbol_disp(BNE, val1, match.str(2), sectionNode);
-  // sad ovde treba u najnizih 12b da spakujem operand tj adresu, ili odstojanje od
-  // bazena literala gde se nalazi tacna adresa
   sectionNode.size += 4;
   location_counter += 4;
   return ret;
@@ -1363,6 +1538,12 @@ int Assembler::process_bgt_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
+  string label = match.str(2);
+  string r1;
+  string r2;
+  string operand;
+  GetOperandBJmps(label, &r1, &r2, &operand);
+  process_literal_first(operand, current_section);
   location_counter += 4;
 
   return ret;
@@ -1370,45 +1551,71 @@ int Assembler::process_bgt_inst(smatch match)
 int Assembler::bgt_inst_second(smatch match)
 {
   int ret = 0;
-  string int_label = ((string)match[0]);
+   string int_label = ((string)match[0]);
   int val1 = 0;
   int val2 = 0;
-  string reg = int_label.substr(int_label.find(" ") + 1, int_label.size());
-  string r1 = reg.substr(0, reg.find(","));
-  string r2 = reg.substr(reg.find(",") + 1, reg.find(","));
-  string operand = reg.substr(reg.find(",") + 1, reg.size());
-  operand = operand.substr(operand.find(",") + 1, operand.size());
+  string r1;
+  string r2;
+  string operand;
+  GetOperandBJmps(int_label, &r1, &r2, &operand);
   val1 = getRegNum(r1);
   val2 = getRegNum(r2);
-  assembler_help_file << "bgt: " << val1 << " , " << val2 << " , " << operand << endl;
+  assembler_help_file << "bqt: " << val1 << " , " << val2 << " , " << operand << endl;
   SectionTableNode &sectionNode = sections.at(this->current_section);
-  bool big = false;
+  bool big = true;
   bool literal = false;
-  int literalVal = getValue(&literal, &big, &operand);
+  long literalVal = getValue(&literal, &big, &operand);
   if (literal)
   {
     if (!big)
     {
-      sectionNode.data.push_back((char)(0x33 << 4) | 0x0);
-      sectionNode.data.push_back((char)(val1 << 4) | val2);
-      sectionNode.data.push_back((char)((0 << 4) | ((literalVal >> 8) & 0x0F)));
+      sectionNode.data.push_back((char)(0x33));
+      sectionNode.data.push_back((char)(val1 & 0x0F));
+      sectionNode.data.push_back((char)((val2 << 4) | ((literalVal >> 8) & 0x0F)));
       sectionNode.data.push_back((char)(literalVal & 0xFF));
     }
     else
     {
-      // bazen literala bgt literal
+      poolData &current_pool = pool.at(current_section);
+      if (current_pool.find(operand) != current_pool.end())
+      {
+        LiteralPoolTable &literal_current = current_pool.at(operand);
+        int disp = literal_current.offset - location_counter;
+        sectionNode.data.push_back((char)(0x3B));
+        sectionNode.data.push_back((char)(0xF << 4) | val1);
+        sectionNode.data.push_back((char)((val2 << 4) | ((disp >> 8) & 0x0F)));
+        sectionNode.data.push_back((char)(disp & 0xFF));
+      }
     }
   }
   else
   {
-    // vrednost simbola?
-    // ako ne znam?
-    // ako znam jer on onda odmah u bazenu literala kad je definisan? nije? samo u tabeli?
-    // proverim dal je veca od 12 ako nije onda odmah, a ako jeste onda bazen literala?
+    if (symbols.find(operand) == symbols.end())
+    {
+      // Error?
+    }
+    else
+    {
+      int val = symbols.at(operand).value;
+      if (isBig(val))
+      {
+        poolData &current_pool = pool.at(current_section);
+        LiteralPoolTable &literal = current_pool.at(operand);
+        int disp = literal.offset - location_counter;
+        sectionNode.data.push_back((char)(0x3B));
+        sectionNode.data.push_back((char)(0xF << 4) | val1);
+        sectionNode.data.push_back((char)((val2 << 4) | ((disp >> 8) & 0x0F)));
+        sectionNode.data.push_back((char)(disp & 0xFF));
+      }
+      else
+      {
+        sectionNode.data.push_back((char)(0x33));
+        sectionNode.data.push_back((char)(val1 & 0x0F));
+        sectionNode.data.push_back((char)((val2 << 4) | ((literalVal >> 8) & 0x0F)));
+        sectionNode.data.push_back((char)(literalVal & 0xFF));
+      }
+    }
   }
-  // ret = process_symbol_disp(BGT, val1, operand, sectionNode);
-  // sad ovde treba u najnizih 12b da spakujem operand tj adresu, ili odstojanje od
-  // bazena literala gde se nalazi tacna adresa
   sectionNode.size += 4;
   location_counter += 4;
   return ret;
@@ -2000,19 +2207,18 @@ int Assembler::process_symbol_disp(int operationCode, int cReg, string operand, 
   return ret;
 }
 
-int Assembler::getLiteralValue(string literal)
+long Assembler::getLiteralValue(string literal)
 {
   smatch match;
   int value = 0;
   if (regex_search(literal, match, rx.hex))
   {
     literal = literal.substr(literal.find('x' | 'X') + 1, literal.size());
-    value = stoi(literal, 0, 16);
-    cout << "literal in getval: " << literal << " value " << value;
+    value = stol(literal, 0, 16);
   }
   else
   {
-    value = stoi(literal);
+    value = stol(literal);
   }
   return value;
 }
@@ -2335,6 +2541,10 @@ void Assembler::outputTables()
     {
       binary_output->write((char *)(&c), sizeof(c));
     }
+    // for (char c2 : it->second.pool)
+    // {
+    //   binary_output->write((char *)(&c2), sizeof(c2));
+    // }
   }
 
   dataInt = symbols.size();

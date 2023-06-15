@@ -7,7 +7,7 @@ using namespace std;
 
 class SymbolTableNode {
   public:
-    int value;
+    long value;
     int section_id;
     string section_name;
     string name;
@@ -26,10 +26,10 @@ class RelocationTableNode {
     int section_id;
     string type;
     string name;
-    int addend;
+    long addend;
     int symbol_id;
-    int value;
-    int offset;
+    long value;
+    long offset;
     RelocationTableNode(int symbol_id, int section_id, string name);
     RelocationTableNode();
 
@@ -38,20 +38,22 @@ class RelocationTableNode {
 class SectionTableNode {
   public:
     string name;
-    int size;
-    int address; //start address?
+    long size;
+    long address; //start address?
     int section_id;
     vector<int> data;
-    SectionTableNode(string name, int address, int size, int section_id);
+    vector<int> pool;
+    SectionTableNode(string name, long address, long size, int section_id);
     SectionTableNode();
 };
 
 class LiteralPoolTable {
   public:
-  int name;
-  int offset;
-  bool defined = false;
-  LiteralPoolTable(int name, int offset);
+  long name;
+  long offset;
+  bool defined = false; //da li sam vec definisala pomeraj ili ne
+  bool stored = false;
+  LiteralPoolTable(long name, long offset);
   LiteralPoolTable();
 };
 

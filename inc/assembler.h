@@ -12,6 +12,7 @@ using namespace std;
 
 #include "regexs.h"
 #include "tables.h"
+#include <unordered_map>
 
 class Assembler {
   public:
@@ -27,11 +28,11 @@ class Assembler {
     int current_line;
     int _symbol_id;
     int _section_id;
-    map<string,SectionTableNode> sections;
-    map<string,SymbolTableNode> symbols;
-    map<string,RelocationTableNode> relocations;
-    typedef map<int, LiteralPoolTable> poolData;
-    map<string, poolData> pool;
+    unordered_map<string,SectionTableNode> sections;
+    unordered_map<string,SymbolTableNode> symbols;
+    unordered_map<string,RelocationTableNode> relocations;
+    typedef unordered_map<string, LiteralPoolTable> poolData;
+    unordered_map<string, poolData> pool;
     
     int pool_distance;
     string current_section;
@@ -124,9 +125,12 @@ class Assembler {
     void outputTables();
     list<string> split(string s, string delimeter);
     bool isLiteral(string literal);
-    int getLiteralValue(string literal);
-    int getValue(bool *literal, bool *big, string *operand);
+    long getLiteralValue(string literal);
+    long getValue(bool *literal, bool *big, string *operand);
     void process_literal_first(string operand, string current_section);
     void process_literal_second(string operand);
+    void savePoolData(string current_section, SectionTableNode *current_section_node);
+    void calculatePoolData(string current_section, SectionTableNode *current_section_node);
+    void GetOperandBJmps(string label, string *r1, string *r2, string *operand);
 };
 #endif 

@@ -11,7 +11,7 @@ SymbolTableNode::SymbolTableNode(int symbol_id, int sec_id, bool is_local, bool 
 SymbolTableNode::SymbolTableNode(){}
 
 
-SectionTableNode::SectionTableNode(string name,int address, int size, int section_id){
+SectionTableNode::SectionTableNode(string name,long address, long size, int section_id){
   this->name = name;
   this->size = size;
   this->section_id = section_id;
@@ -27,7 +27,7 @@ RelocationTableNode::RelocationTableNode(int symbol_id, int section_id, string n
 }
 RelocationTableNode::RelocationTableNode(){}
 
-LiteralPoolTable::LiteralPoolTable(int name, int offset) {
+LiteralPoolTable::LiteralPoolTable(long name, long offset) {
   this->name = name;
   this->offset = offset;
 }
