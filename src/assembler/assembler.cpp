@@ -58,6 +58,16 @@ bool Assembler::isLiteral(string literal)
   return ret;
 }
 
+bool isBig(int literalVal)
+{
+  if (literalVal < -2048 || literalVal >= 2047)
+    return true;
+  else
+  {
+    return false;
+  }
+}
+
 int Assembler::getValue(bool *literal, bool *big, string *operand)
 {
   int ret = -1;
@@ -123,6 +133,7 @@ void Assembler::assemble(string input_file, string output_file)
   this->printSectionTable();
   this->printSymbolTable();
   this->printRelocationTable();
+  this->printLiteralPool();
   this->binary_output->close();
   this->assembler_help_file.close();
 }
@@ -267,14 +278,14 @@ int Assembler::process_label(string label)
       poolData &current_pool = pool.at(current_section);
       if (symbol.used)
       {
-        if (current_pool.find(symbol.name) == current_pool.end())
+        if (current_pool.find(symbol.value) == current_pool.end())
         {
-          LiteralPoolTable *literal = new LiteralPoolTable(symbol.name, location_counter);
-          current_pool.insert({symbol.name, *literal});
+          LiteralPoolTable *literal = new LiteralPoolTable(symbol.value, location_counter);
+          current_pool.insert({symbol.value, *literal});
         }
         else
         {
-          LiteralPoolTable &literal = current_pool.at(symbol.name);
+          LiteralPoolTable &literal = current_pool.at(symbol.value);
           literal.offset = location_counter;
         }
       }
@@ -554,6 +565,22 @@ void Assembler::printSectionTable()
   }
 }
 
+void Assembler::printLiteralPool(){
+  this->assembler_help_file << endl
+                            << "Literal pool: " << endl;
+  this->assembler_help_file << "Section_name  "<< endl;
+  for (auto it = pool.cbegin(); it != pool.end(); ++it)
+  {
+    this->assembler_help_file << it->first << endl;
+    this->assembler_help_file << "name  offset  used" << endl;
+    for (auto c : it->second)
+    {
+      assembler_help_file << c.second.name<<" "<<c.second.offset<<" "<<c.second.defined<<endl;
+    }
+    assembler_help_file << endl;
+  }
+}
+
 int Assembler::process_extern_dir(smatch match)
 {
   int ret = 0;
@@ -668,7 +695,7 @@ int Assembler::process_section_dir(smatch match)
   SectionTableNode *newSection = new SectionTableNode(section_name, this->location_counter, 0, this->_section_id);
   sections.insert({section_name, *newSection});
   poolData data;
-  pool.insert({section_name, data}); //meni je ovde druga mapa prazna, ne znam dal to moze tako
+  pool.insert({section_name, data}); // meni je ovde druga mapa prazna, ne znam dal to moze tako
 
   this->current_section = section_name;
   this->location_counter = 0;
@@ -1022,7 +1049,8 @@ int Assembler::process_call_inst(smatch match)
   return ret;
 }
 
-void Assembler::process_literal_first(string operand, string current_section) {
+void Assembler::process_literal_first(string operand, string current_section)
+{
   bool big = true;
   bool literal = false;
   int literalVal = getValue(&literal, &big, &operand);
@@ -1031,10 +1059,10 @@ void Assembler::process_literal_first(string operand, string current_section) {
   {
     if (big)
     {
-      if (current.find(operand) == current.end())
+      if (current.find(literalVal) == current.end())
       {
-        LiteralPoolTable *literal = new LiteralPoolTable(operand, 0);
-        current.insert({operand, *literal});
+        LiteralPoolTable *literal = new LiteralPoolTable(literalVal, 0);
+        current.insert({literalVal, *literal});
       }
     }
   }
@@ -1043,9 +1071,9 @@ void Assembler::process_literal_first(string operand, string current_section) {
     if (symbols.find(operand) != symbols.end())
     {
       SymbolTableNode &symbol = symbols.at(operand);
-      LiteralPoolTable *literal = new LiteralPoolTable(operand, symbol.value);
+      LiteralPoolTable *literal = new LiteralPoolTable(symbol.value, symbol.value);
       symbol.used = true;
-      current.insert({operand, *literal});
+      current.insert({symbol.value, *literal});
     }
   }
 }
@@ -1071,13 +1099,45 @@ int Assembler::call_inst_second(smatch match)
     else
     {
       cout << "Call big literal" << endl;
-      if (pool.find(operand) != pool.end()) {
-        
+      poolData &current_pool = pool.at(current_section);
+      if (current_pool.find(literalVal) != current_pool.end())
+      {
+        LiteralPoolTable &literal = current_pool.at(literalVal);
+        int disp = literal.offset - location_counter;
+        sectionNode.data.push_back((char)(0x21 | 0xF));
+        sectionNode.data.push_back((char)0x00);
+        sectionNode.data.push_back((char)((0 << 4) | ((disp >> 8) & 0x0F)));
+        sectionNode.data.push_back((char)(disp & 0xFF));
       }
     }
   }
   else
   {
+    if (symbols.find(operand) == symbols.end())
+    {
+      // Error?
+    }
+    else
+    {
+      int val = symbols.at(operand).value;
+      if (isBig(val))
+      {
+        cout << "Call big symbol" << endl;
+        poolData &current_pool = pool.at(current_section);
+        LiteralPoolTable &literal = current_pool.at(val);
+        int disp = literal.offset - location_counter;
+        sectionNode.data.push_back((char)(0x21 | 0xF));
+        sectionNode.data.push_back((char)0x00);
+        sectionNode.data.push_back((char)((0 << 4) | ((disp >> 8) & 0x0F)));
+        sectionNode.data.push_back((char)(disp & 0xFF));
+      } else {
+        cout << "Call not big symbol" << endl;
+        sectionNode.data.push_back((char)(0x20 | 0x0));
+        sectionNode.data.push_back((char)0x00);
+        sectionNode.data.push_back((char)((0 << 4) | ((val >> 8) & 0x0F)));
+        sectionNode.data.push_back((char)(val & 0xFF));
+      }
+    }
     // vrednost simbola?
     // ako ne znam?
     // ako znam jer on onda odmah u bazenu literala kad je definisan? nije? samo u tabeli?

@@ -48,10 +48,10 @@ class SectionTableNode {
 
 class LiteralPoolTable {
   public:
-  string name;
+  int name;
   int offset;
   bool defined = false;
-  LiteralPoolTable(string name, int offset);
+  LiteralPoolTable(int name, int offset);
   LiteralPoolTable();
 };
 

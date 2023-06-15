@@ -1,5 +1,5 @@
 .section my_code_main
-call 0x53
+call 0xFFFF
 beq %r1, %r2, 0x27
 bne %r1, %r2, 0x35
 bne %r1, %r2, 0xFFFF

@@ -30,7 +30,7 @@ class Assembler {
     map<string,SectionTableNode> sections;
     map<string,SymbolTableNode> symbols;
     map<string,RelocationTableNode> relocations;
-    typedef map<string, LiteralPoolTable> poolData;
+    typedef map<int, LiteralPoolTable> poolData;
     map<string, poolData> pool;
     
     int pool_distance;
@@ -120,6 +120,7 @@ class Assembler {
     void printSymbolTable();
     void printRelocationTable();
     void printSectionTable();
+    void printLiteralPool();
     void outputTables();
     list<string> split(string s, string delimeter);
     bool isLiteral(string literal);

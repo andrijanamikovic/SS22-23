@@ -27,7 +27,7 @@ RelocationTableNode::RelocationTableNode(int symbol_id, int section_id, string n
 }
 RelocationTableNode::RelocationTableNode(){}
 
-LiteralPoolTable::LiteralPoolTable(string name, int offset) {
+LiteralPoolTable::LiteralPoolTable(int name, int offset) {
   this->name = name;
   this->offset = offset;
 }
