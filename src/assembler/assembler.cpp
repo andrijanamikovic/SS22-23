@@ -68,6 +68,47 @@ bool isBig(int literalVal)
   }
 }
 
+void Assembler::mem_operand(string operands, string *operand, string *reg, string current_section, bool store)
+{
+  switch (store)
+  {
+  case true:
+    *reg = operands.substr(0, operands.find(","));
+    *operand = operands.substr(operands.find(",") + 1, operands.size());
+    break;
+  case false:
+    *operand = operands.substr(0, operands.find(","));
+    *reg = operands.substr(operands.find(",") + 1, operands.size());
+    break;
+  }
+  int val = getRegNum(*reg);
+  smatch match;
+  switch (store)
+  {
+  case true:
+    if (regex_search(*operand, match, rx.register_relative_operand_regex))
+    {
+      string operand = match.str(0);
+      smatch match2;
+      operand = operand.substr(operand.find("+"), operand.size());
+      operand = operand.substr(1, operand.find("]") - 1);
+      process_literal_first(operand, current_section);
+    } else if (regex_search(*operand, match, rx.register_absolute_operand_regex)){
+
+    } else if (regex_search(*operand, match, rx.reg_dir_regex)){
+
+    } else if (regex_search(*operand, match, rx.absolute_operand_regex)){
+
+    } else if((regex_search(*operand, match, rx.memory_direct_operand_regex))){
+      process_literal_first(*operand, current_section);
+    }
+    break;
+  case false:
+
+    break;
+  }
+}
+
 long Assembler::getValue(bool *literal, bool *big, string *operand)
 {
   int ret = -1;
@@ -1355,14 +1396,15 @@ int Assembler::process_beq_inst(smatch match)
   return ret;
 }
 
-void Assembler::GetOperandBJmps(string label, string *r1, string *r2, string *operand) {
+void Assembler::GetOperandBJmps(string label, string *r1, string *r2, string *operand)
+{
 
   string reg = label.substr(label.find(" ") + 1, label.size());
   cout << reg;
-   *r1 = reg.substr(0, reg.find(","));
-   *r2 = reg.substr(reg.find(",") + 1, reg.find(","));
-   *operand = reg.substr(reg.find(",") + 1, reg.size());
-   string help = *operand;
+  *r1 = reg.substr(0, reg.find(","));
+  *r2 = reg.substr(reg.find(",") + 1, reg.find(","));
+  *operand = reg.substr(reg.find(",") + 1, reg.size());
+  string help = *operand;
   *operand = help.substr(help.find(",") + 1, help.size());
 }
 
@@ -1460,7 +1502,7 @@ int Assembler::process_bne_inst(smatch match)
 int Assembler::bne_inst_second(smatch match)
 {
   int ret = 0;
-   string int_label = ((string)match[0]);
+  string int_label = ((string)match[0]);
   int val1 = 0;
   int val2 = 0;
   string r1;
@@ -1551,7 +1593,7 @@ int Assembler::process_bgt_inst(smatch match)
 int Assembler::bgt_inst_second(smatch match)
 {
   int ret = 0;
-   string int_label = ((string)match[0]);
+  string int_label = ((string)match[0]);
   int val1 = 0;
   int val2 = 0;
   string r1;
@@ -2047,6 +2089,10 @@ int Assembler::process_ld_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
+  string operands = match.str(2);
+  string reg;
+  string operand;
+  mem_operand(operands, &operand, &reg, current_section, false);
   location_counter += 4;
   return ret;
 }
@@ -2076,6 +2122,10 @@ int Assembler::process_st_inst(smatch match)
          << "Error at line: " << this->current_line << endl;
     return -1;
   }
+  string operands = match.str(2);
+  string reg;
+  string operand;
+  mem_operand(operands, &operand, &reg, current_section, true);
   location_counter += 4;
   return ret;
 }
@@ -2266,10 +2316,19 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       }
       else
       {
-        // vrednost simbola?
-        // ako ne znam error
-        // ako veci od 12b error
-        // kad saznam upisi vrednost
+        int val = symbols.at(operand).value;
+        if (isBig(val))
+        {
+          cout << "Error st + reg ind with disp biger then 12b" << endl;
+          return -1;
+        }
+        else
+        {
+          sectionNode.data.push_back((char)0x80);
+          sectionNode.data.push_back((char)((r & 0x0F)));
+          sectionNode.data.push_back((char)((reg << 4) | ((val >> 8) & 0x0F)));
+          sectionNode.data.push_back((char)(val & 0xFF));
+        }
       }
       sectionNode.size += 4;
       this->assembler_help_file << "Store registar indirect with disp: " << operand << endl;
@@ -2280,7 +2339,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       string operand = match.str(0);
       operand = operand.substr(1, operand.size() - 1);
       r = getRegNum(operand);
-      cout << "St + registarsko apsolutno operand" << r << endl;
+      cout << "St + registarsko indirect operand" << r << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
       sectionNode.data.push_back((char)0x80);
       sectionNode.data.push_back((char)r);
@@ -2327,21 +2386,45 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
         }
         else
         {
-          /*
-          sectionNode.data.push_back((char)0x82);
-          sectionNode.data.push_back((char)0);
-          sectionNode.data.push_back((char)((reg << 4) | ((literalVal >> 8) & 0x0F)));
-          sectionNode.data.push_back((char)(literalVal & 0xFF));
-          //samo sto literalVal treba da mi bude rastojanje od bazena literala
-          */
+          poolData &current_pool = pool.at(current_section);
+          if (current_pool.find(operand) != current_pool.end())
+          {
+            LiteralPoolTable &literal_current = current_pool.at(operand);
+            int disp = literal_current.offset - location_counter;
+            sectionNode.data.push_back((char)(0x82));
+            sectionNode.data.push_back((char)0xF0);
+            sectionNode.data.push_back((char)((reg << 4) | ((disp >> 8) & 0x0F)));
+            sectionNode.data.push_back((char)(disp & 0xFF));
+          }
         }
       }
       else
       {
-        // vrednost simbola?
-        // ako ne znam error
-        // ako veci od 12b error
-        // kad saznam upisi vrednost
+        if (symbols.find(operand) == symbols.end())
+        {
+          // Error?
+        }
+        else
+        {
+          int val = symbols.at(operand).value;
+          if (isBig(val))
+          {
+            poolData &current_pool = pool.at(current_section);
+            LiteralPoolTable &literal = current_pool.at(operand);
+            int disp = literal.offset - location_counter;
+            sectionNode.data.push_back((char)(0x82));
+            sectionNode.data.push_back((char)0xF0);
+            sectionNode.data.push_back((char)((reg << 4) | ((disp >> 8) & 0x0F)));
+            sectionNode.data.push_back((char)(disp & 0xFF));
+          }
+          else
+          {
+            sectionNode.data.push_back((char)(0x80));
+            sectionNode.data.push_back((char)0x00);
+            sectionNode.data.push_back((char)((reg << 4) | ((val >> 8) & 0x0F)));
+            sectionNode.data.push_back((char)(val & 0xFF));
+          }
+        }
       }
       sectionNode.size += 4;
       this->assembler_help_file << "Store memory direct: " << endl;

@@ -129,6 +129,7 @@ class Assembler {
     long getValue(bool *literal, bool *big, string *operand);
     void process_literal_first(string operand, string current_section);
     void process_literal_second(string operand);
+    void mem_operand(string operands,string *operand,string *reg, string current_section, bool store);
     void savePoolData(string current_section, SectionTableNode *current_section_node);
     void calculatePoolData(string current_section, SectionTableNode *current_section_node);
     void GetOperandBJmps(string label, string *r1, string *r2, string *operand);
