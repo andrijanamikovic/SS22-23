@@ -81,30 +81,63 @@ void Assembler::mem_operand(string operands, string *operand, string *reg, strin
     *reg = operands.substr(operands.find(",") + 1, operands.size());
     break;
   }
-  int val = getRegNum(*reg);
+  cout << "Operand: " << operands << "reg: " << *reg << "operand: " << *operand;
+  string regVal = *reg;
+  string operandVal = *operand;
+  int val = getRegNum(regVal);
   smatch match;
   switch (store)
   {
   case true:
-    if (regex_search(*operand, match, rx.register_relative_operand_regex))
+    if (regex_search(operandVal, match, rx.register_relative_operand_regex))
     {
       string operand = match.str(0);
       smatch match2;
       operand = operand.substr(operand.find("+"), operand.size());
       operand = operand.substr(1, operand.find("]") - 1);
       process_literal_first(operand, current_section);
-    } else if (regex_search(*operand, match, rx.register_absolute_operand_regex)){
-
-    } else if (regex_search(*operand, match, rx.reg_dir_regex)){
-
-    } else if (regex_search(*operand, match, rx.absolute_operand_regex)){
-
-    } else if((regex_search(*operand, match, rx.memory_direct_operand_regex))){
-      process_literal_first(*operand, current_section);
+    }
+    else if (regex_search(operandVal, match, rx.register_absolute_operand_regex))
+    {
+    }
+    else if (regex_search(operandVal, match, rx.reg_dir_regex))
+    {
+    }
+    else if (regex_search(operandVal, match, rx.absolute_operand_regex))
+    {
+    }
+    else if ((regex_search(operandVal, match, rx.memory_direct_operand_regex)))
+    {
+      string operand = match.str(0);
+      process_literal_first(operand, current_section);
     }
     break;
   case false:
-
+    if (regex_search(operandVal, match, rx.register_relative_operand_regex))
+    {
+      int r = 0;
+      string operand = match.str(0);
+      smatch match2;
+      operand = operand.substr(operand.find("+"), operand.size());
+      operand = operand.substr(1, operand.find("]") - 1);
+      process_literal_first(operand, current_section);
+    } else if (regex_search(operandVal, match, rx.register_absolute_operand_regex))
+    {
+    }
+    else if (regex_search(operandVal, match, rx.reg_dir_regex))
+    {
+    }
+    else if (regex_search(operandVal, match, rx.absolute_operand_regex))
+    {
+      string operand = match.str(0);
+      operand = operand.substr(1, operand.size());
+      process_literal_first(operand, current_section);
+    }
+    else if ((regex_search(operandVal, match, rx.memory_direct_operand_regex)))
+    {
+      string operand = match.str(0);
+      process_literal_first(operand, current_section);
+    }
     break;
   }
 }
@@ -1167,6 +1200,7 @@ void Assembler::process_literal_first(string operand, string current_section)
   bool literal = false;
   int literalVal = getValue(&literal, &big, &operand);
   poolData &current = pool.at(current_section);
+  cout << "Jel ovde pucas?? " << literal << endl;
   if (literal)
   {
     if (big)
@@ -2125,6 +2159,7 @@ int Assembler::process_st_inst(smatch match)
   string operands = match.str(2);
   string reg;
   string operand;
+  cout << "St first operands: " << operands << " reg: " << reg << " operand: " << operand;
   mem_operand(operands, &operand, &reg, current_section, true);
   location_counter += 4;
   return ret;
@@ -2139,7 +2174,7 @@ int Assembler::st_inst_second(smatch match)
   assembler_help_file << "str sa operandom: " << operand << " and reg" << reg << endl;
   cout << "Store " << reg << " , " << operand << endl;
   int val = getRegNum(reg);
-  ret = process_operand(operand, val, false);
+  // ret = process_operand(operand, val, false);
   // cout << endl
   //      << operand << " str operand, str reg: " << reg << endl;
   location_counter += 4;
@@ -2473,10 +2508,19 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       }
       else
       {
-        // vrednost simbola?
-        // ako ne znam error
-        // ako veci od 12b error
-        // kad saznam upisi vrednost
+        int val = symbols.at(operand).value;
+        if (isBig(val))
+        {
+          cout << "Error st + reg ind with disp biger then 12b" << endl;
+          return -1;
+        }
+        else
+        {
+          sectionNode.data.push_back((char)0x92);
+          sectionNode.data.push_back((char)((reg << 4) | r));
+          sectionNode.data.push_back((char)((val >> 8) & 0xFF));
+          sectionNode.data.push_back((char)(val & 0xFF));
+        }
       }
       cout << "Ld + registarsko indirektno sa disp" << match.str(0) << endl;
       sectionNode.size += 4;
@@ -2518,7 +2562,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       bool big = false;
       bool literal = false;
       int literalVal = getValue(&literal, &big, &operand);
-      cout << "Ld + apsolutno " << operand << endl;
+      cout << "Ld + neposredno " << operand << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
       if (literal)
       {
@@ -2531,19 +2575,45 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
         }
         else
         {
-          // bazen literala
-          /*
-          sectionNode.data.push_back((char)0x92);
-          sectionNode.data.push_back((char)(reg << 4));
-          sectionNode.data.push_back((char)((literalVal >> 8) & 0x0F));
-          sectionNode.data.push_back((char)(literalVal & 0xFF));
-          // a u literalVal treba rastojanje do bazena literala
-          */
+          poolData &current_pool = pool.at(current_section);
+          if (current_pool.find(operand) != current_pool.end())
+          {
+            LiteralPoolTable &literal_current = current_pool.at(operand);
+            int disp = literal_current.offset - location_counter;
+            sectionNode.data.push_back((char)(0x92));
+            sectionNode.data.push_back((char)(reg << 4));
+            sectionNode.data.push_back((char)((0xF | ((disp >> 8) & 0x0F))));
+            sectionNode.data.push_back((char)(disp & 0xFF));
+          }
         }
       }
       else
       {
-        // vrednost simbola?
+        if (symbols.find(operand) == symbols.end())
+        {
+          // Error?
+        }
+        else
+        {
+          int val = symbols.at(operand).value;
+          if (isBig(val))
+          {
+            poolData &current_pool = pool.at(current_section);
+            LiteralPoolTable &literal = current_pool.at(operand);
+            int disp = literal.offset - location_counter;
+            sectionNode.data.push_back((char)(0x92));
+            sectionNode.data.push_back((char)(reg << 4));
+            sectionNode.data.push_back((char)((0xF | ((disp >> 8) & 0x0F))));
+            sectionNode.data.push_back((char)(disp & 0xFF));
+          }
+          else
+          {
+            sectionNode.data.push_back((char)0x91);
+            sectionNode.data.push_back((char)(reg << 4));
+            sectionNode.data.push_back((char)((literalVal >> 8) & 0x0F));
+            sectionNode.data.push_back((char)(literalVal & 0xFF));
+          }
+        }
       }
 
       sectionNode.size += 4;
@@ -2570,26 +2640,60 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
         else
         {
           // bazen literala
-          /*
-          sectionNode.data.push_back((char)0x92);
-          sectionNode.data.push_back((char)(reg << 4));
-          sectionNode.data.push_back((char)((literalVal >> 8) & 0x0F));
-          sectionNode.data.push_back((char)(literalVal & 0xFF));
-          // a u literalVal treba rastojanje do bazena literala
-          Ali meni kad je vece onda su dve instrukcije prvo ovo pa
-          sectionNode.data.push_back((char)0x92);
-          sectionNode.data.push_back((char)(reg << 4));
-          sectionNode.data.push_back((char)(0x00));
-          sectionNode.data.push_back((char)(0x00));
-          location_counter = location_counter + 4; //ali se onda ne poklapa sa prvim prolazom?
-          */
+          poolData &current_pool = pool.at(current_section);
+          if (current_pool.find(operand) != current_pool.end())
+          {
+            LiteralPoolTable &literal_current = current_pool.at(operand);
+            int disp = literal_current.offset - location_counter;
+            sectionNode.data.push_back((char)0x92);
+            sectionNode.data.push_back((char)(reg << 4));
+            sectionNode.data.push_back((char)((0xF | ((disp >> 8) & 0x0F))));
+            sectionNode.data.push_back((char)(disp & 0xFF));
+            // a u literalVal treba rastojanje do bazena literala
+            sectionNode.data.push_back((char)0x92);
+            sectionNode.data.push_back((char)(reg << 4));
+            sectionNode.data.push_back((char)(0x00));
+            sectionNode.data.push_back((char)(0x00));
+            location_counter = location_counter + 4; // ali se onda ne poklapa sa prvim prolazom?
+            sectionNode.size += 4;
+          }
         }
       }
       else
       {
-        // vrednost simbola?
+        if (symbols.find(operand) == symbols.end())
+        {
+          // Error?
+        }
+        else
+        {
+          int val = symbols.at(operand).value;
+          if (isBig(val))
+          {
+            poolData &current_pool = pool.at(current_section);
+            LiteralPoolTable &literal = current_pool.at(operand);
+            int disp = literal.offset - location_counter;
+            sectionNode.data.push_back((char)0x92);
+            sectionNode.data.push_back((char)(reg << 4));
+            sectionNode.data.push_back((char)((0xF | ((disp >> 8) & 0x0F))));
+            sectionNode.data.push_back((char)(disp & 0xFF));
+            // a u literalVal treba rastojanje do bazena literala
+            sectionNode.data.push_back((char)0x92);
+            sectionNode.data.push_back((char)(reg << 4));
+            sectionNode.data.push_back((char)(0x00));
+            sectionNode.data.push_back((char)(0x00));
+            location_counter = location_counter + 4; // ali se onda ne poklapa sa prvim prolazom?
+            sectionNode.size += 4;
+          }
+          else
+          {
+            sectionNode.data.push_back((char)0x92);
+            sectionNode.data.push_back((char)(reg << 4));
+            sectionNode.data.push_back((char)((literalVal >> 8) & 0x0F));
+            sectionNode.data.push_back((char)(literalVal & 0xFF));
+          }
+        }
       }
-
       sectionNode.size += 4;
       this->assembler_help_file << "Load memory direct: " << operand << endl;
     }

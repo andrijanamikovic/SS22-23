@@ -1,31 +1,22 @@
 End of section: UND with size: 0
-Call inst first 
-Call inst first 
-Call inst first 
-Call inst first 
-.end 
-Call inst second 
-Call inst second 
-Call inst second 
-Call inst second 
-.jmp with operand: 0xFFFF
-beq: 7 , 8 , 0xEFEF
-beq: 7 , 8 , 5
+str sa operandom: my_counter and reg%r1
 str sa operandom: %r12 and reg%r4
-Store reg direct: 4, 12
-str sa operandom: 0xFFFF and reg%r4
-Store memory direct: 
-
-Section table: 
-Section_id Section_name  Section_address Section_size Data_len
-1  my_code_main 0  36 36 
-0 UND 0  0 0 
-
-Section table: 
-Section_id Section_name  Section_address Section_size Data_len
-1  my_code_main 0  48 48 
-0 UND 0  0 0 
-.end of section:  my_code_main with size: 48
+str sa operandom: [%r12] and reg%r4
+str sa operandom: 0xEFEF and reg%r7
+ld sa operandom %r2
+Load reg direct operand: %r2
+ld sa operandom [%r12]
+Load registar indirect : %r12] , 4
+ld sa operandom 0xFFFF
+Load memory direct: 0xFFFF
+ld sa operandom [%r12+15]
+Load registar indirect with disp: 15
+ld sa operandom [%r12+my_counter]
+Load registar indirect with disp: my_counter
+ld sa operandom $3
+Load memory apsolut : 3
+ld sa operandom 0xF3
+Load memory direct: 0xF3
 Posle upisa: 
 
 Relocation table
@@ -33,21 +24,22 @@ Symbol_id Symbol_name  Section_id type addend value
 
 Section table: 
 Section_id Section_name  Section_address Section_size Data_len
-1  my_code_main 0  48 48 
+1  my_data 0  32 32 
 0 UND 0  0 0 
 
 Symbol table: 
 Symbol_id Symbol_name  Section_id Section_name defined local extern
-1  my_code_main 1    1 1  0
+3 my_counter 1   my_data  1 1  0
+2 my_isr_terminal 1   my_data  1 1  0
+1  my_data 1    1 1  0
 
 Relocation table
 Symbol_id Symbol_name  Section_id type addend value
 
 Literal pool: 
 Section_name  
- my_code_main
+ my_data
 key name  offset  used
-0xEFEF 61423 32 1
-0xEEEE 61166 36 1
-0xFFFF 65535 40 1
+0xFFFF 65535 0 0
+0xEFEF 61423 0 0
 
