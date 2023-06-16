@@ -117,7 +117,6 @@ class Assembler {
     int csrwr_inst_second(smatch match);
 
     int process_operand(string operand,int reg, bool load);
-    int process_symbol_disp(int operationCode, int cReg, string operand, SectionTableNode &sectionNode );
     void printSymbolTable();
     void printRelocationTable();
     void printSectionTable();

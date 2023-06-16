@@ -147,9 +147,10 @@ long Assembler::getValue(bool *literal, bool *big, string *operand)
   int ret = -1;
   long literalVal = 0;
   smatch match2;
-  if (regex_search(*operand, match2, rx.lit_regex))
+  string operandVal = *operand;
+  if (regex_match(operandVal, match2, rx.lit_regex))
   {
-    literalVal = getLiteralValue(*operand);
+    literalVal = getLiteralValue(operandVal);
     *literal = true;
     if (literalVal < -2048 || literalVal >= 2047)
       *big = true;
@@ -158,11 +159,12 @@ long Assembler::getValue(bool *literal, bool *big, string *operand)
       *big = false;
     }
   }
-  else if (regex_search(*operand, match2, rx.sym_regex))
+  else if (regex_match(operandVal, match2, rx.sym_regex))
   {
     *literal = false;
     *operand = match2.str(0);
   }
+  cout << " Literal: " << *literal << endl;
   return literalVal;
 }
 
@@ -831,7 +833,6 @@ int Assembler::process_section_dir(smatch match)
   sections.insert({section_name, *newSection});
   poolData data;
   pool.insert({section_name, data}); // meni je ovde druga mapa prazna, ne znam dal to moze tako
-
   this->current_section = section_name;
   this->location_counter = 0;
   this->pool_distance = 0;
@@ -1198,17 +1199,18 @@ void Assembler::process_literal_first(string operand, string current_section)
 {
   bool big = true;
   bool literal = false;
+  cout << "Jel ovde pucas1?? " << literal <<  " operand: " << operand << endl;
   int literalVal = getValue(&literal, &big, &operand);
   poolData &current = pool.at(current_section);
-  cout << "Jel ovde pucas?? " << literal << endl;
+  cout << "Jel ovde pucas?? " << literal << " literal val: " << literalVal<<  " operand: " << operand << endl;
   if (literal)
   {
     if (big)
     {
       if (current.find(operand) == current.end())
       {
-        LiteralPoolTable *literal = new LiteralPoolTable(literalVal, 0);
-        current.insert({operand, *literal});
+        LiteralPoolTable *literal_current = new LiteralPoolTable(literalVal, 0);
+        current.insert({operand, *literal_current});
       }
     }
   }
@@ -2257,38 +2259,6 @@ int Assembler::csrwr_inst_second(smatch match)
   sectionNode.data.push_back((char)0);
   sectionNode.size += 4;
   location_counter += 4;
-  return ret;
-}
-int Assembler::process_symbol_disp(int operationCode, int cReg, string operand, SectionTableNode &sectionNode)
-{
-  // ovde treba da obradim da mi operand stavlja u bazen literala
-  //  i onda dips u najniza 12 bita do toga u bazenu literala
-  // ne povecavam section_size i location_counter za ovih 12b sto ostalo tj 2B al najvisa 4 su 0
-  // ali moram da vidim sta se desava sa bazenom literala
-  int ret = 0;
-  switch (operationCode)
-  {
-  case CALL:
-    // bazen literala
-    break;
-  case JMP:
-    // bazen literala
-    break;
-  case BEQ:
-
-    break;
-  case BNE:
-    break;
-  case BGT:
-    break;
-  case LD:
-    break;
-  case ST:
-    break;
-  default:
-    break;
-  }
-
   return ret;
 }
 
