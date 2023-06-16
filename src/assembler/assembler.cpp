@@ -47,11 +47,11 @@ bool Assembler::isLiteral(string literal)
 {
   bool ret = false;
   smatch match;
-  if (regex_search(literal, match, rx.hex))
+  if (regex_match(literal, match, rx.hex))
   {
     ret = true;
   }
-  else if (regex_search(literal, match, rx.integer))
+  else if (regex_match(literal, match, rx.integer))
   {
     ret = true;
   }
@@ -287,11 +287,6 @@ void Assembler::process_input_file()
       lines.push_back(current_line);
     }
   }
-
-  // for (string s: lines){
-  //   cout << s << endl;
-  // }
-
   input.close();
 }
 
