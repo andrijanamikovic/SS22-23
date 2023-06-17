@@ -53,6 +53,7 @@ class LiteralPoolTable {
   long offset;
   bool defined = false; //da li sam vec definisala pomeraj ili ne
   bool stored = false;
+  bool symbol = false;
   LiteralPoolTable(long name, long offset);
   LiteralPoolTable();
 };

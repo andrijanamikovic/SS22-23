@@ -81,7 +81,6 @@ void Assembler::mem_operand(string operands, string *operand, string *reg, strin
     *reg = operands.substr(operands.find(",") + 1, operands.size());
     break;
   }
-  cout << "Operand: " << operands << "reg: " << *reg << "operand: " << *operand;
   string regVal = *reg;
   string operandVal = *operand;
   int val = getRegNum(regVal);
@@ -164,7 +163,6 @@ long Assembler::getValue(bool *literal, bool *big, string *operand)
     *literal = false;
     *operand = match2.str(0);
   }
-  cout << " Literal: " << *literal << endl;
   return literalVal;
 }
 
@@ -174,7 +172,6 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
   {
     return;
   }
-  printSectionTable();
   poolData &data = pool.at(current_section);
   cout << "End of section save the pool " << endl;
   for (auto &it : data)
@@ -191,11 +188,27 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
         second.offset = location_counter - 4;
         second.defined = true;
       }
+      if (second.symbol) {
+        SymbolTableNode &current_symbol = symbols.at(it.first);
+        if (current_symbol.local){
+          RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.symbol_id, current_symbol.section_id, current_symbol.section_name);
+          relocation_data->value = second.offset;
+          relocation_data->type = "R_X86_64_32";
+          relocation_data->addend = second.offset;
+          relocations.insert({current_symbol.section_name, *relocation_data});
+        } else {
+          RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.symbol_id, current_symbol.section_id, current_symbol.name);
+          relocation_data->value = second.offset;
+          relocation_data->type = "R_X86_64_32";
+          relocation_data->addend = second.offset;
+          relocations.insert({current_symbol.name, *relocation_data});
+        }
+        
+      }
       location_counter += 4;
       current_section_node->size += 4;
     }
   }
-  printSectionTable();
 }
 
 void Assembler::calculatePoolData(string current_section, SectionTableNode *current_section_node)
@@ -205,7 +218,6 @@ void Assembler::calculatePoolData(string current_section, SectionTableNode *curr
     return;
   }
   poolData &data = pool.at(current_section);
-  cout << "End of section or size too big calculate offset " << endl;
   for (auto &it : data)
   {
     LiteralPoolTable &second = it.second;
@@ -406,11 +418,13 @@ int Assembler::process_label(string label)
         if (current_pool.find(label) == current_pool.end())
         {
           LiteralPoolTable *literal = new LiteralPoolTable(symbol.value, location_counter);
+          literal->symbol = true;
           current_pool.insert({label, *literal});
         }
         else
         {
           LiteralPoolTable &literal = current_pool.at(label);
+          literal.symbol = true;
           literal.offset = location_counter;
         }
       }
@@ -717,6 +731,11 @@ int Assembler::process_extern_dir(smatch match)
   string extern_label = ((string)match[0]);
   list<string> symbol_list = this->split(extern_label.substr(extern_label.find(" ") + 1, extern_label.size()), ",");
   extern_label = extern_label.substr(0, extern_label.find(" "));
+  if (pool.find("UND") == pool.end()){
+    poolData data;
+    pool.insert({"UND", data});
+  }
+  poolData &current_pool = pool.at("UND");
   for (string s : symbol_list)
   {
     if (symbols.find(s) == symbols.end())
@@ -730,6 +749,10 @@ int Assembler::process_extern_dir(smatch match)
       symbols.insert({s, *symbol});
       assembler_help_file << ".extern "
                           << "symbol_name: " << s << " location counter: " << location_counter << " section: " << this->current_section << endl;
+      
+      LiteralPoolTable *literal = new LiteralPoolTable(symbol->value, 0);
+      literal->symbol = true;
+      current_pool.insert({symbol->name, *literal});
     }
     else
     {
@@ -751,6 +774,11 @@ int Assembler::process_global_dir(smatch match)
   string global_label = ((string)match[0]);
   list<string> symbol_list = this->split(global_label.substr(global_label.find(" ") + 1, global_label.size()), ",");
   global_label = global_label.substr(0, global_label.find(" "));
+  if (pool.find("UND") == pool.end()){
+    poolData data;
+    pool.insert({"UND", data});
+  }
+  poolData &current_pool = pool.at("UND");
   for (string s : symbol_list)
   {
     if (symbols.find(s) == symbols.end())
@@ -760,10 +788,13 @@ int Assembler::process_global_dir(smatch match)
       SymbolTableNode *symbol = new SymbolTableNode(++this->_symbol_id, 0, false, false, false);
       symbol->name = s;
       symbol->type = "NOTYP";
-      symbol->section_name = current_section; // ili UND?
+      symbol->section_name = "UND"; // ili UND?
       symbols.insert({s, *symbol});
       assembler_help_file << ".global "
                           << "symbol_name: " << s << " location counter: " << location_counter << " section: " << symbol->section_name << endl;
+      LiteralPoolTable *literal = new LiteralPoolTable(symbol->value, 0);
+      literal->symbol = true;
+      current_pool.insert({symbol->name, *literal});
     }
     else
     {
@@ -904,7 +935,7 @@ int Assembler::word_dir_second(smatch match)
           symbol.value = current_line;
           symbol.section_id = current_section_id;
           symbol.section_name = current_section;
-          symbol.section_name = current_section;
+          symbol.name = current_section;
           RelocationTableNode *relocation_data = new RelocationTableNode(symbol.symbol_id, symbol.section_id, symbol.name);
           relocation_data->value = current_line;
           relocation_data->type = "R_X86_64_32";
@@ -1053,11 +1084,9 @@ list<string> Assembler::split(string s, string delimeter)
 {
   list<string> ret;
   int pos = 0;
-  // cout << "U split : ";
   while ((pos = s.find(delimeter)) != string::npos)
   {
     ret.push_back(s.substr(0, pos));
-    // cout << s.substr(0, pos) << endl;
     s = s.erase(0, pos + delimeter.length());
   }
   ret.push_back(s);
@@ -1194,10 +1223,8 @@ void Assembler::process_literal_first(string operand, string current_section)
 {
   bool big = true;
   bool literal = false;
-  cout << "Jel ovde pucas1?? " << literal <<  " operand: " << operand << endl;
   int literalVal = getValue(&literal, &big, &operand);
   poolData &current = pool.at(current_section);
-  cout << "Jel ovde pucas?? " << literal << " literal val: " << literalVal<<  " operand: " << operand << endl;
   if (literal)
   {
     if (big)
@@ -1214,9 +1241,12 @@ void Assembler::process_literal_first(string operand, string current_section)
     if (symbols.find(operand) != symbols.end())
     {
       SymbolTableNode &symbol = symbols.at(operand);
-      LiteralPoolTable *literal = new LiteralPoolTable(symbol.value, symbol.value);
-      symbol.used = true;
-      current.insert({operand, *literal});
+      if (!symbol.extern_sym or !symbol.defined){
+        LiteralPoolTable *literal = new LiteralPoolTable(symbol.value, symbol.value);
+        symbol.used = true;
+        literal->symbol = true;
+        current.insert({operand, *literal});
+      }
     }
   }
 }
@@ -1261,7 +1291,8 @@ int Assembler::call_inst_second(smatch match)
     }
     else
     {
-      int val = symbols.at(operand).value;
+      SymbolTableNode symbol = symbols.at(operand);
+      int val = symbol.value;
       if (isBig(val))
       {
         poolData &current_pool = pool.at(current_section);
@@ -1431,7 +1462,6 @@ void Assembler::GetOperandBJmps(string label, string *r1, string *r2, string *op
 {
 
   string reg = label.substr(label.find(" ") + 1, label.size());
-  cout << reg;
   *r1 = reg.substr(0, reg.find(","));
   *r2 = reg.substr(reg.find(",") + 1, reg.find(","));
   *operand = reg.substr(reg.find(",") + 1, reg.size());
@@ -2137,10 +2167,6 @@ int Assembler::ld_inst_second(smatch match)
   int val1 = getRegNum(reg);
   assembler_help_file << "ld sa operandom " << operand << endl;
   ret = process_operand(operand, val1, true);
-  // cout << endl
-  //      << operand << " ldr operand, ldr reg: " << endl
-  //      << operand << endl
-  //      << reg << endl;
   location_counter += 4;
   return ret;
 }
@@ -2156,7 +2182,6 @@ int Assembler::process_st_inst(smatch match)
   string operands = match.str(2);
   string reg;
   string operand;
-  cout << "St first operands: " << operands << " reg: " << reg << " operand: " << operand;
   mem_operand(operands, &operand, &reg, current_section, true);
   location_counter += 4;
   return ret;
@@ -2169,11 +2194,8 @@ int Assembler::st_inst_second(smatch match)
   string reg = operands.substr(0, operands.find(","));
   string operand = operands.substr(operands.find(",") + 1, operands.size());
   assembler_help_file << "str sa operandom: " << operand << " and reg" << reg << endl;
-  cout << "Store " << reg << " , " << operand << endl;
   int val = getRegNum(reg);
-  // ret = process_operand(operand, val, false);
-  // cout << endl
-  //      << operand << " str operand, str reg: " << reg << endl;
+  ret = process_operand(operand, val, false);
   location_counter += 4;
   return ret;
 }
@@ -2297,7 +2319,6 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       bool big = false;
       bool literal = false;
       int literalVal = getValue(&literal, &big, &operand);
-      cout << "St + registarsko indirektno sa disp" << match.str(0) << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
       if (literal)
       {
@@ -2339,7 +2360,6 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       string operand = match.str(0);
       operand = operand.substr(1, operand.size() - 1);
       r = getRegNum(operand);
-      cout << "St + registarsko indirect operand" << r << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
       sectionNode.data.push_back((char)0x80);
       sectionNode.data.push_back((char)r);
@@ -2353,7 +2373,6 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
     {
       int r = 0;
       r = getRegNum(match.str(0));
-      cout << "St + regdir" << reg << ", " << r << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
       sectionNode.data.push_back((char)0x91);
       sectionNode.data.push_back((char)((r << 4) | reg));
@@ -2373,7 +2392,6 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       bool big = false;
       bool literal = false;
       int literalVal = getValue(&literal, &big, &operand);
-      cout << "St + memorijsko direktno" << match.str(0) << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
       if (literal)
       {
@@ -2454,7 +2472,6 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       bool big = false;
       bool literal = false;
       int literalVal = getValue(&literal, &big, &operand);
-      cout << "Ld + registarsko indirektno sa disp" << match.str(0) << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
       if (literal)
       {
@@ -2487,14 +2504,12 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
           sectionNode.data.push_back((char)(val & 0xFF));
         }
       }
-      cout << "Ld + registarsko indirektno sa disp" << match.str(0) << endl;
       sectionNode.size += 4;
       this->assembler_help_file << "Load registar indirect with disp: " << operand << endl;
     }
     else if (regex_search(operand, match, rx.register_absolute_operand_regex))
     {
       int r = 0; // to nemam sad
-      cout << "Ld + registarsko apsolutno operand" << match.str(0) << endl;
       string operand = match.str(0);
       operand = operand.substr(1, operand.size() - 1);
       r = getRegNum(operand);
@@ -2510,7 +2525,6 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
     {
       int r = 0;
       r = getRegNum(match.str(0));
-      cout << "Ld + regdir" << r << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
       sectionNode.data.push_back((char)0x91);
       sectionNode.data.push_back((char)((reg << 4) | r));
@@ -2527,7 +2541,6 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       bool big = false;
       bool literal = false;
       int literalVal = getValue(&literal, &big, &operand);
-      cout << "Ld + neposredno " << operand << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
       if (literal)
       {
@@ -2591,7 +2604,6 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
       bool big = false;
       bool literal = false;
       int literalVal = getValue(&literal, &big, &operand);
-      cout << "Ld + memory direct " << operand << endl;
       SectionTableNode &sectionNode = sections.at(this->current_section);
       if (literal)
       {
