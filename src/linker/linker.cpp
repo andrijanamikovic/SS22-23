@@ -56,7 +56,7 @@ int Linker::load_data_for_linker(string file)
 
   char data;
 
-  map<string, SectionTableNode> file_sections;
+  unordered_map<string, SectionTableNode> file_sections;
 
   for (int i = 0; i < section_size; i++)
   {
@@ -98,7 +98,7 @@ int Linker::load_data_for_linker(string file)
   this->linker_help_file << endl
                          << "Velicina tabele simbola: " << symbol_table_size << endl;
 
-  map<string, SymbolTableNode> file_symbols;
+  unordered_map<string, SymbolTableNode> file_symbols;
 
   for (int i = 0; i < symbol_table_size; i++)
   {
@@ -152,7 +152,7 @@ int Linker::load_data_for_linker(string file)
   this->linker_help_file << endl
                          << "Velicina tabele relokacije: " << relocation_table_size << endl;
 
-  map<string, RelocationTableNode> file_relocations;
+  unordered_map<string, RelocationTableNode> file_relocations;
 
   for (int i = 0; i < relocation_table_size; i++)
   {
@@ -208,9 +208,9 @@ int Linker::map_section_table()
   int next_address = 0;
   for (string file : input_files)
   {
-    map<string, SectionTableNode> &current_section_table = sections.at(file);
-    map<string, RelocationTableNode> &current_relocation_table = relocations.at(file);
-    map<string, SymbolTableNode> &current_symbols_table = symbols.at(file);
+    unordered_map<string, SectionTableNode> &current_section_table = sections.at(file);
+    unordered_map<string, RelocationTableNode> &current_relocation_table = relocations.at(file);
+    unordered_map<string, SymbolTableNode> &current_symbols_table = symbols.at(file);
     for (auto it = current_section_table.cbegin(); it != current_section_table.end(); ++it)
     {
       if (it->first == "UND")
@@ -278,7 +278,7 @@ int Linker::map_symbol_table()
 {
   int ret = 0;
   int next_address = 0;
-  map<string, SymbolTableNode> extern_symbols;
+  unordered_map<string, SymbolTableNode> extern_symbols;
   // First I add sections
   for (auto it = output_sections.begin(); it != output_sections.end(); ++it)
   {
@@ -290,7 +290,7 @@ int Linker::map_symbol_table()
   }
   for (string file : input_files)
   {
-    map<string, SymbolTableNode> current_symbol_table = symbols.at(file);
+    unordered_map<string, SymbolTableNode> current_symbol_table = symbols.at(file);
     for (auto it = current_symbol_table.begin(); it != current_symbol_table.end(); ++it)
     {
       if (it->second.extern_sym)
@@ -324,7 +324,7 @@ int Linker::map_symbol_table()
       }
       else if (it->second.local)
       {
-        map<string, SectionTableNode> &file_section_table = sections.at(file);
+        unordered_map<string, SectionTableNode> &file_section_table = sections.at(file);
         SymbolTableNode *symbol = new SymbolTableNode(++_symbol_id, it->second.section_id, it->second.local, it->second.defined, it->second.extern_sym);
         if (it->second.section_name != "")
         {
@@ -366,7 +366,7 @@ void Linker::printSymbolTableLinker()
   for (string file : input_files)
   {
     this->linker_combined_file << "In file: " << file << endl;
-    map<string, SymbolTableNode> symbol = symbols.at(file);
+    unordered_map<string, SymbolTableNode> symbol = symbols.at(file);
     this->linker_combined_file << endl
                                << endl
                                << "Symbol table: " << endl;
@@ -382,7 +382,7 @@ void Linker::printRelocationTableLinker()
 {
   for (string file : input_files)
   {
-    map<string, RelocationTableNode> reloc = relocations.at(file);
+    unordered_map<string, RelocationTableNode> reloc = relocations.at(file);
     this->linker_combined_file << endl
                                << "Relocation table file: " << file << endl;
     this->linker_combined_file << "Symbol_id Symbol_name  Section_id type addend value" << endl;
@@ -412,14 +412,14 @@ int Linker::resolve_relocations()
 {
   for (string file : input_files)
   {
-    map<string, RelocationTableNode> &relocation_table = relocations.at(file);
-    map<string, SymbolTableNode> &symbol_table = symbols.at(file);
+    unordered_map<string, RelocationTableNode> &relocation_table = relocations.at(file);
+    unordered_map<string, SymbolTableNode> &symbol_table = symbols.at(file);
     for (auto it = relocation_table.begin(); it != relocation_table.end(); ++it)
     {
       SymbolTableNode &current_symbol = output_symbols.at(it->first);
       if (!current_symbol.local)
       {
-        map<string, SectionTableNode> current_sections_table = sections.at(file);
+        unordered_map<string, SectionTableNode> current_sections_table = sections.at(file);
         SectionTableNode current_section;
         for (auto it1 = current_sections_table.begin(); it1 != current_sections_table.end(); ++it1)
         {

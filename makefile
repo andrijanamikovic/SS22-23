@@ -13,37 +13,34 @@ PROGRAM = assembler
 
 all : AS LD EM
 
-AS_all: AS1 AS2 AS3 AS4 AS5 AS6 AS7
+AS_all: AS1 AS2 AS3 AS4 AS5 AS6 
 
 AS1: assembler.o
 	./assembler -o main.o main.s
 
 AS2: assembler.o
-	./assembler -o handlers.o handlers.s
+	./assembler -o handler.o handler.s
 
 AS3: assembler.o
 	./assembler -o math.o math.s
 
 AS4: assembler.o
-	./assembler -o isr_reset.o isr_reset.s
-
-AS5: assembler.o
 	./assembler -o isr_terminal.o isr_terminal.s
 
-AS6: assembler.o
+AS5: assembler.o
 	./assembler -o isr_timer.o isr_timer.s
 
-AS7: assembler.o
+AS6: assembler.o
 	./assembler -o isr_software.o isr_software.s
 
-AS8: assembler.o
+AS7: assembler.o
 	./assembler -o test.o test.s
 
 assembler.o:	$(ASSEMBLER_DIR)/main.cpp $(ASSEMBLER_DIR)/assembler.cpp $(ASSEMBLER_DIR)/tables.cpp
 	g++ -g -gdwarf-2 -fdebug-prefix-map==../ -o assembler  $(ASSEMBLER_DIR)/main.cpp $(ASSEMBLER_DIR)/assembler.cpp $(ASSEMBLER_DIR)/tables.cpp
 
 LD: linker.o
-	./linker -hex -o program.hex ivt.o math.o main.o isr_reset.o isr_terminal.o isr_timer.o isr_user0.o
+	./linker -hex -o program.hex handler.o math.o main.o isr_terminal.o isr_timer.o isr_software.o
 
 linker.o:	$(LINKER_DIR)/main.cpp $(LINKER_DIR)/linker.cpp $(ASSEMBLER_DIR)/tables.cpp
 	g++ -g -o linker  $(LINKER_DIR)/main.cpp $(LINKER_DIR)/linker.cpp $(ASSEMBLER_DIR)/tables.cpp

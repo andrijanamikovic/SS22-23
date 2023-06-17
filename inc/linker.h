@@ -5,7 +5,7 @@
 #include <list>
 #include <string>
 #include "./tables.h"
-#include <map>
+#include <unordered_map>
 #include <fstream>
 
 
@@ -39,14 +39,14 @@ class Linker {
     ofstream linker_combined_file;
 
     //map of tables data from every file
-    map<string, map<string,SectionTableNode>> sections;
-    map< string, map<string,SymbolTableNode>> symbols;
-    map<string, map<string,RelocationTableNode>> relocations;
+    unordered_map<string, unordered_map<string,SectionTableNode>> sections;
+    unordered_map< string, unordered_map<string,SymbolTableNode>> symbols;
+    unordered_map<string, unordered_map<string,RelocationTableNode>> relocations;
 
 
-    map<string,SectionTableNode> output_sections;
-    map<string,SymbolTableNode> output_symbols;
-    map<string,RelocationTableNode> output_relocations;
+    unordered_map<string,SectionTableNode> output_sections;
+    unordered_map<string,SymbolTableNode> output_symbols;
+    unordered_map<string,RelocationTableNode> output_relocations;
 
 };
 
