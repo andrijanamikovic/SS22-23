@@ -173,7 +173,14 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
     return;
   }
   poolData &data = pool.at(current_section);
+  int literalVal = data.size()*4;
+  cout << "Velicina bazena: " << data.size();
   cout << "End of section save the pool " << endl;
+  current_section_node->data.push_back((char)(0x30));
+  current_section_node->data.push_back((char)0xF0);
+  current_section_node->data.push_back((char)((0x0 << 4) | ((literalVal >> 8) & 0x0F)));
+  current_section_node->data.push_back((char)(literalVal & 0xFF));
+  location_counter += 4;
   for (auto &it : data)
   {
     LiteralPoolTable &second = it.second;
@@ -1387,7 +1394,7 @@ int Assembler::jmp_inst_second(smatch match)
   {
     if (!big)
     {
-      sectionNode.data.push_back((char)(0x30 << 4) | 0x0);
+      sectionNode.data.push_back((char)(0x30));
       sectionNode.data.push_back((char)0x00);
       sectionNode.data.push_back((char)((0 << 4) | ((literalVal >> 8) & 0x0F)));
       sectionNode.data.push_back((char)(literalVal & 0xFF));
