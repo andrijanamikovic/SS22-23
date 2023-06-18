@@ -15,20 +15,24 @@ void Linker::link(bool is_hax, list<string> input_files, string output_file)
     if (load_data_for_linker(file) < 0)
       return;
   }
-
+  // this->printSectionTableInFile();
   int ret = 0;
-  // ret = this->map_section_table();
+  ret = this->map_section_table();
   if (ret < 0)
   {
     cout << "Error while mapping sections" << endl;
     return;
   }
-  // ret = this->map_symbol_table();
+  ret = this->map_symbol_table();
   if (ret < 0)
   {
     cout << "Error while mapping symbols" << endl;
     return;
   }
+  this->linker_combined_file << endl
+                             << endl
+                             << endl;
+  // this->printSectionTableInFile();
   this->printSectionTableLinker();
   this->printSymbolTableLinker();
   this->printRelocationTableLinker();
@@ -210,11 +214,11 @@ int Linker::map_section_table()
     unordered_map<string, SectionTableNode> &current_section_table = sections.at(file);
     unordered_map<string, RelocationTableNode> &current_relocation_table = relocations.at(file);
     unordered_map<string, SymbolTableNode> &current_symbols_table = symbols.at(file);
-    for (auto it = current_section_table.cbegin(); it != current_section_table.end(); ++it)
+    for (auto it = current_section_table.begin(); it != current_section_table.end(); ++it)
     {
       if (it->first == "UND")
         continue;
-      SectionTableNode current = it->second;
+      SectionTableNode &current = it->second;
       if (output_sections.find(it->first) != output_sections.end())
       {
         // I already have section with the same name
@@ -269,6 +273,23 @@ int Linker::map_section_table()
         current.section_id = ++_section_id;
         output_sections.insert({it->first, current});
       }
+    }
+  }
+  int old_address = -1;
+  int old_size = 0;
+  for (auto it = output_sections.begin(); it != output_sections.end(); ++it)
+  {
+    if (old_address == -1)
+    {
+      old_address = it->second.address;
+      old_size = it->second.size;
+    }
+    else
+    {
+      SectionTableNode &current = it->second;
+      current.address += old_address + old_size;
+      old_address = current.address;
+      old_size = current.size;
     }
   }
   return ret;
@@ -387,10 +408,30 @@ void Linker::printRelocationTableLinker()
     this->linker_combined_file << "Symbol_id Symbol_name  Section_id type addend value" << endl;
     for (auto it = reloc.cbegin(); it != reloc.end(); ++it)
     {
-      this->linker_combined_file << it->second.symbol_id << " " << it->first << " " << it->second.section_id << "  " << it->second.addend << "  " << it->second.value << endl;
+      this->linker_combined_file << it->second.symbol_id << " " << it->first << " " << it->second.section_id << "  " << it->second.addend << "  " << it->second.type << " " << it->second.value << endl;
     }
   }
 }
+
+void Linker::printSectionTableInFile()
+{
+  for (auto it1 = sections.cbegin(); it1 != sections.end(); ++it1)
+  {
+    this->linker_combined_file << endl
+                               << "Section table: in file: " << it1->first << endl;
+    this->linker_combined_file << "Section_id Section_name  Section_address Section_size Data_len" << endl;
+    for (auto it = it1->second.cbegin(); it != it1->second.end(); ++it)
+    {
+      this->linker_combined_file << it->second.section_id << " " << it->first << " " << it->second.address << "  " << it->second.size << " " << it->second.data.size() << " ";
+      // for (auto c : it->second.data)
+      // {
+      //   linker_combined_file << (char)c;
+      // }
+      linker_combined_file << endl;
+    }
+  }
+}
+
 void Linker::printSectionTableLinker()
 {
   this->linker_combined_file << endl
@@ -430,7 +471,7 @@ int Linker::resolve_relocations()
         }
         if (&current_section == nullptr)
           continue;
-        if (it->second.type == "TYPE_16")
+        if (it->second.type == "R_X86_64_32")
         {
         }
       }
@@ -439,6 +480,7 @@ int Linker::resolve_relocations()
       }
     }
   }
+  return 0;
 }
 
 void Linker::make_hex_file()

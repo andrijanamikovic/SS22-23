@@ -32,6 +32,7 @@ class Linker {
     void printSymbolTableLinker();
     void printRelocationTableLinker();
     void printSectionTableLinker();
+    void printSectionTableInFile();
 
     ifstream input_data;
     ofstream output_linker;
