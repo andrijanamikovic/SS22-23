@@ -17,13 +17,13 @@ void Linker::link(bool is_hax, list<string> input_files, string output_file)
   }
 
   int ret = 0;
-  ret = this->map_section_table();
+  // ret = this->map_section_table();
   if (ret < 0)
   {
     cout << "Error while mapping sections" << endl;
     return;
   }
-  ret = this->map_symbol_table();
+  // ret = this->map_symbol_table();
   if (ret < 0)
   {
     cout << "Error while mapping symbols" << endl;
@@ -47,45 +47,44 @@ int Linker::load_data_for_linker(string file)
 
   this->linker_help_file.open(file + "_linker.txt", ios::out);
 
-  int size;
-  input_data.read((char *)&size, sizeof(size));
+  unsigned size;
+  input_data.read((char *)(&size), sizeof(unsigned));
 
-  int section_size = size;
+  unsigned sections_size = size;
   this->linker_help_file << endl
-                         << "Velicina tabele sekcija: " << section_size << endl;
-
-  char data;
-
+                         << "Velicina tabele sekcija: " << sections_size << endl;
   unordered_map<string, SectionTableNode> file_sections;
 
-  for (int i = 0; i < section_size; i++)
+  for (int i = 0; i < sections_size; i++)
   {
     SectionTableNode *current_section = new SectionTableNode();
     int section_id;
-    input_data.read((char *)&section_id, sizeof(section_id)); // section id
+    unsigned current_size;
+    input_data.read((char *)(&current_size), sizeof(unsigned)); // section size
+    this->linker_help_file << " Size: " << current_size;
+    current_section->size = current_size;
+    unsigned len;
+    input_data.read((char *)(&len), sizeof(unsigned)); // section name len
+    this->linker_help_file << " Len: " << len;
+    input_data.read((char *)(&section_id), sizeof(int)); // section id
     this->linker_help_file << " Section_id: " << section_id;
     current_section->section_id = section_id;
-    int address;
-    input_data.read((char *)&address, sizeof(address)); // section address
+    long address;
+    input_data.read((char *)(&address), sizeof(long)); // section address
     this->linker_help_file << " Address: " << address;
     current_section->address = address;
-    int section_size;
-    input_data.read((char *)&section_size, sizeof(section_size)); // section size
-    this->linker_help_file << " Size: " << section_size;
-    current_section->size = section_size;
-    unsigned len;
-    input_data.read((char *)&len, sizeof(unsigned)); // section name len
-    this->linker_help_file << " Len: " << len;
     string name;
     name.resize(len);
     input_data.read((char *)name.c_str(), len);
     this->linker_help_file << " Name: " << (string)name << endl;
     current_section->name = name;
     char data;
-    for (int i = 0; i < current_section->size; i++)
+    for (int i = 0; i < current_size; i++)
     {
+      // cout << "Data? " << endl;
       input_data.read((char *)&data, sizeof(char)); // section data
       current_section->data.push_back(data);
+      // cout << data;
     }
 
     file_sections.insert({current_section->name, *current_section});
@@ -126,7 +125,7 @@ int Linker::load_data_for_linker(string file)
     this->linker_help_file << " Name: " << (string)name << endl;
     current_symbol->name = name;
     int value;
-    input_data.read((char *)&value, sizeof(int)); // value
+    input_data.read((char *)&value, sizeof(long)); // value
     this->linker_help_file << " Value: " << value;
     current_symbol->value = value;
     input_data.read((char *)&len, sizeof(unsigned)); // section name len
@@ -173,11 +172,11 @@ int Linker::load_data_for_linker(string file)
     input_data.read((char *)&section_id, sizeof(section_id)); // section id
     this->linker_help_file << " Section_id: " << section_id;
     current_relocation->section_id = section_id;
-    int addend;
+    long addend;
     input_data.read((char *)&addend, sizeof(addend)); // addend
     this->linker_help_file << " Addend: " << addend;
     current_relocation->addend = addend;
-    int value;
+    long value;
     input_data.read((char *)&value, sizeof(value)); // value
     this->linker_help_file << " Value: " << value;
     current_relocation->value = value;

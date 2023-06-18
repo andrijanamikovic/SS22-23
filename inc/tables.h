@@ -38,11 +38,11 @@ class RelocationTableNode {
 class SectionTableNode {
   public:
     string name;
-    long size;
+    int size;
     long address; //start address?
     int section_id;
-    vector<int> data;
-    vector<int> pool;
+    vector<char> data;
+    vector<char> pool;
     SectionTableNode(string name, long address, long size, int section_id);
     SectionTableNode();
 };

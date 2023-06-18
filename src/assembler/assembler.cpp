@@ -2687,28 +2687,26 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
 void Assembler::outputTables()
 {
 
-  int dataInt = sections.size();
-  binary_output->write((char *)(&dataInt), sizeof(dataInt));
+  unsigned dataInt = sections.size();
+  binary_output->write((char *)(&dataInt), sizeof(unsigned));
 
   for (auto it = sections.cbegin(); it != sections.end(); ++it)
   {
-    dataInt = it->second.data.size();
+    dataInt = (unsigned)it->second.data.size();
+    binary_output->write((char *)(&dataInt), sizeof(unsigned)); // size
+    unsigned len = (unsigned)it->second.name.size();
+    binary_output->write((char *)(&len), sizeof(unsigned));
+    cout << "Velicina sekcije " << it->second.name << " : " << dataInt << "id: " << it->second.section_id << " address: " << it->second.address <<endl;
     binary_output->write((char *)(&it->second.section_id), sizeof(it->second.section_id));
     binary_output->write((char *)(&it->second.address), sizeof(it->second.address));
-    // binary_output->write((char *)(&it->second.size), sizeof(it->second.size));
-    binary_output->write((char *)(&dataInt), sizeof(dataInt));
-    unsigned len = (unsigned)it->second.name.size();
+    // long data_size = it->second.data.size();
+    // binary_output->write((char *)(&data_size), sizeof(data_size));
     // cout << "Duzina imena sekcije: " << len << " ime: " <<  it->second.name << endl;
-    binary_output->write((char *)(&len), sizeof(unsigned));
-    binary_output->write(it->second.name.c_str(), len);
+    binary_output->write((char*)it->second.name.c_str(), len);
     for (char c : it->second.data)
     {
       binary_output->write((char *)(&c), sizeof(c));
     }
-    // for (char c2 : it->second.pool)
-    // {
-    //   binary_output->write((char *)(&c2), sizeof(c2));
-    // }
   }
 
   dataInt = symbols.size();
@@ -2723,7 +2721,7 @@ void Assembler::outputTables()
     unsigned len = (unsigned)it->second.name.size();
     binary_output->write((char *)(&len), sizeof(unsigned));
     binary_output->write(it->second.name.c_str(), len);                          // name
-    binary_output->write((char *)(&it->second.value), sizeof(it->second.value)); // value
+    binary_output->write((char *)(&it->second.value), sizeof(long)); // value
     len = (unsigned)it->second.section_name.size();
     binary_output->write((char *)(&len), sizeof(unsigned));
     binary_output->write(it->second.section_name.c_str(), len); // section_name
@@ -2743,8 +2741,8 @@ void Assembler::outputTables()
     // binary_output->write((char *)(&dataInt), sizeof(dataInt));
     binary_output->write((char *)(&it->second.symbol_id), sizeof(it->second.symbol_id));
     binary_output->write((char *)(&it->second.section_id), sizeof(it->second.section_id));
-    binary_output->write((char *)(&it->second.addend), sizeof(it->second.addend));
-    binary_output->write((char *)(&it->second.value), sizeof(it->second.value));
+    binary_output->write((char *)(&it->second.addend), sizeof(long));
+    binary_output->write((char *)(&it->second.value), sizeof(long));
     len = (unsigned)it->second.type.size();
     binary_output->write((char *)(&len), sizeof(unsigned));
     binary_output->write(it->second.type.c_str(), len); // tip

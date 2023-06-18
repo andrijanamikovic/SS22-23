@@ -40,7 +40,10 @@ assembler.o:	$(ASSEMBLER_DIR)/main.cpp $(ASSEMBLER_DIR)/assembler.cpp $(ASSEMBLE
 	g++ -g -gdwarf-2 -fdebug-prefix-map==../ -o assembler  $(ASSEMBLER_DIR)/main.cpp $(ASSEMBLER_DIR)/assembler.cpp $(ASSEMBLER_DIR)/tables.cpp
 
 LD: linker.o
-	./linker -hex -o program.hex handler.o math.o main.o isr_terminal.o isr_timer.o isr_software.o
+	./linker -hex -o program.hex main.o handler.o math.o isr_terminal.o isr_timer.o isr_software.o
+
+LD1: linker.o
+	./linker -hex -o program.hex main.o
 
 linker.o:	$(LINKER_DIR)/main.cpp $(LINKER_DIR)/linker.cpp $(ASSEMBLER_DIR)/tables.cpp
 	g++ -g -o linker  $(LINKER_DIR)/main.cpp $(LINKER_DIR)/linker.cpp $(ASSEMBLER_DIR)/tables.cpp
@@ -62,7 +65,7 @@ lex.yy.o: lex.yy.c
 
 
 clean :
-	rm *_linker.txt
+	rm  linker.txt *_linker.txt
 
 clean_as:
 	rm *.o*
