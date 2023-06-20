@@ -14,18 +14,21 @@ using namespace std;
 class Linker {
   
   public:
-      void link(bool is_hax, list<string> input_files, string output_file);
+      void link(bool is_hax, bool relocatable_output, list<string> input_files, list<string> places, string output_file);
       Linker();
 
   private:
     bool is_hax;
+    bool relocatable_output;
     int _section_id;
     int _symbol_id;
     list<string> input_files;
+    list<string> places;
     string output_file;
     int load_data_for_linker(string file);
     int map_section_table();
     int map_symbol_table();
+    int map_relocation_table();
     int resolve_relocations();
     void make_hex_file();
 

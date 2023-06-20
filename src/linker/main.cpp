@@ -6,48 +6,69 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-  if (argc < 2) {
+  if (argc < 2)
+  {
     cout << "Not enough input arguments" << endl;
     return -1;
   }
 
   list<string> input_files;
+  list<string> places;
   string output_file;
   bool has_output_file = false;
   bool hex_output = false;
+  bool relocatable_output = false;
 
   string command = argv[0];
   string option;
+  string mode = argv[1];
+  smatch match;
 
+  if ("./linker" == command)
+  {
 
-  if ("./linker" == command) {
+    regex place_reg("-place=([a-zA-Z][_A-Za-z0-9]*)@0x([0-9A-Fa-f]+)"); 
+    regex input_reg("^([a-zA-Z][_A-Za-z0-9]*)\\.o$");
 
-    regex place_reg("-place=([a-zA-Z][_A-Za-z0-9]*)@0x([0-9A-Fa-f]+)"); //Za B nivo
-
-    for (int i = 1; i< argc; i++){
+    if (mode == "-hex")
+    {
+      hex_output = true;
+    }
+    else if (mode == "-relocatable")
+    {
+    }
+    else if (!hex_output && !relocatable_output)
+    {
+      cout << "Error ouput mode must be choosen: -hex or -relocatable"<<endl;
+    }
+    for (int i = 2; i < argc; i++)
+    {
       option = argv[i];
 
-      if (option == "-o"){
+      if (option == "-o")
+      {
         has_output_file = true;
-      } else if ( option == "-hex") {
-        hex_output = true;
-      } else if (has_output_file)
-        {
-            cout << "Output file is: "<< option << endl;
-            output_file = option;
-            has_output_file = false;
-        }
-        else
-        {
-            cout << "Input file is: "<< option << endl;
-            input_files.push_back(option);
-        }
+      }
+      else if (has_output_file)
+      {
+        cout << "Output file is: " << option << endl;
+        output_file = option;
+        has_output_file = false;
+      }
+      else if (regex_match(option, match, place_reg)){
+        places.push_back(option);
+      } else if (regex_match(option, match, input_reg))
+      {
+        cout << "Input file is: " << option << endl;
+        input_files.push_back(option);
+      }
     }
-    Linker* linker = new Linker();
-    linker->link(hex_output, input_files, output_file);
-  } else {
+    Linker *linker = new Linker();
+    linker->link(hex_output, relocatable_output, input_files, places, output_file);
+  }
+  else
+  {
     return -1;
   }
-    return 0;
-
+  return 0;
 }

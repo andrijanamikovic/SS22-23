@@ -20,9 +20,9 @@ SectionTableNode::SectionTableNode(string name,long address, long size, int sect
 SectionTableNode::SectionTableNode(){}
 
 
-RelocationTableNode::RelocationTableNode(int symbol_id, int section_id, string name){
-  this->symbol_id = symbol_id;
-  this->section_id = section_id;
+RelocationTableNode::RelocationTableNode(int relocation_id, string name, string section_name){
+  this->relocation_id = relocation_id;
+  this->section_name = section_name;
   this->name = name;
 }
 RelocationTableNode::RelocationTableNode(){}

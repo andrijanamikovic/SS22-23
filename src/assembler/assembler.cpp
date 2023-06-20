@@ -198,15 +198,15 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
       if (second.symbol) {
         SymbolTableNode &current_symbol = symbols.at(it.first);
         if (current_symbol.local){
-          RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.symbol_id, current_symbol.section_id, current_symbol.section_name);
+          RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.section_id, current_symbol.section_name, current_symbol.section_name);
           relocation_data->value = second.offset;
-          relocation_data->type = "R_X86_64_32";
+          relocation_data->type = "R_X86_64_PC32";
           relocation_data->addend = second.offset;
           relocations.insert({current_symbol.section_name, *relocation_data});
         } else {
-          RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.symbol_id, current_symbol.section_id, current_symbol.name);
+          RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.symbol_id, current_symbol.name, current_symbol.section_name);
           relocation_data->value = second.offset;
-          relocation_data->type = "R_X86_64_32";
+          relocation_data->type = "R_X86_64_PC32";
           relocation_data->addend = second.offset;
           relocations.insert({current_symbol.name, *relocation_data});
         }
@@ -692,10 +692,10 @@ void Assembler::printRelocationTable()
 {
   this->assembler_help_file << endl
                             << "Relocation table" << endl;
-  this->assembler_help_file << "Symbol_id Symbol_name  Section_id type addend value" << endl;
+  this->assembler_help_file << "Relocation_id Symbol_name  type addend value" << endl;
   for (auto it = relocations.cbegin(); it != relocations.end(); ++it)
   {
-    this->assembler_help_file << it->second.symbol_id << " " << it->first << " " << it->second.section_id << "  " << it->second.addend << "  " << it->second.value << endl;
+    this->assembler_help_file << it->second.relocation_id << " " << it->first << " " << it->second.type << "  " << it->second.addend << "  " << it->second.value << endl;
   }
 }
 
@@ -926,7 +926,7 @@ int Assembler::word_dir_second(smatch match)
           sectionNode.data.push_back((int)(symbol.value & 0xFFFF));
           sectionNode.data.push_back((int)((symbol.value >> 16) & 0xFFFF));
           //
-          RelocationTableNode *relocation_data = new RelocationTableNode(symbol.symbol_id, symbol.section_id, symbol.name);
+          RelocationTableNode *relocation_data = new RelocationTableNode(symbol.section_id, symbol.name, symbol.section_name);
           relocation_data->value = current_line;
           relocation_data->type = "R_X86_64_32";
           relocation_data->addend = 0;
@@ -943,7 +943,7 @@ int Assembler::word_dir_second(smatch match)
           symbol.section_id = current_section_id;
           symbol.section_name = current_section;
           symbol.name = current_section;
-          RelocationTableNode *relocation_data = new RelocationTableNode(symbol.symbol_id, symbol.section_id, symbol.name);
+          RelocationTableNode *relocation_data = new RelocationTableNode(symbol.symbol_id, symbol.name, symbol.section_name);
           relocation_data->value = current_line;
           relocation_data->type = "R_X86_64_32";
           relocation_data->addend = 0;
@@ -2703,7 +2703,7 @@ void Assembler::outputTables()
     binary_output->write((char *)(&dataInt), sizeof(unsigned)); // size
     unsigned len = (unsigned)it->second.name.size();
     binary_output->write((char *)(&len), sizeof(unsigned));
-    cout << "Velicina sekcije " << it->second.name << " : " << dataInt << "id: " << it->second.section_id << " address: " << it->second.address <<endl;
+    // cout << "Velicina sekcije " << it->second.name << " : " << dataInt << "id: " << it->second.section_id << " address: " << it->second.address <<endl;
     binary_output->write((char *)(&it->second.section_id), sizeof(it->second.section_id));
     binary_output->write((char *)(&it->second.address), sizeof(it->second.address));
     // long data_size = it->second.data.size();
@@ -2745,9 +2745,11 @@ void Assembler::outputTables()
     unsigned len = (unsigned)it->second.name.size();
     binary_output->write((char *)(&len), sizeof(unsigned));
     binary_output->write(it->second.name.c_str(), len); // name
+    len = (unsigned)it->second.section_name.size();
+    binary_output->write((char *)(&len), sizeof(unsigned));
+    binary_output->write(it->second.section_name.c_str(), len); // section_name
     // binary_output->write((char *)(&dataInt), sizeof(dataInt));
-    binary_output->write((char *)(&it->second.symbol_id), sizeof(it->second.symbol_id));
-    binary_output->write((char *)(&it->second.section_id), sizeof(it->second.section_id));
+    binary_output->write((char *)(&it->second.relocation_id), sizeof(it->second.relocation_id));
     binary_output->write((char *)(&it->second.addend), sizeof(long));
     binary_output->write((char *)(&it->second.value), sizeof(long));
     len = (unsigned)it->second.type.size();

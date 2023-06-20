@@ -23,14 +23,15 @@ class SymbolTableNode {
 
 class RelocationTableNode {
   public:
-    int section_id;
+    int relocation_id;
     string type;
     string name;
+    string section_name;
+    string filename;
     long addend;
-    int symbol_id;
     long value;
     long offset;
-    RelocationTableNode(int symbol_id, int section_id, string name);
+    RelocationTableNode(int relocation_id, string name, string section_name);
     RelocationTableNode();
 
 };
