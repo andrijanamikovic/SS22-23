@@ -198,16 +198,17 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
       if (second.symbol) {
         SymbolTableNode &current_symbol = symbols.at(it.first);
         if (current_symbol.local){
-          RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.section_id, current_symbol.section_name, current_symbol.section_name);
+          RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.section_id, current_symbol.section_name, current_section);
           relocation_data->value = second.offset;
           relocation_data->type = "R_X86_64_PC32";
           relocation_data->addend = second.offset;
+          relocation_data->local = true;
           relocations.insert({current_symbol.section_name, *relocation_data});
         } else {
-          RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.symbol_id, current_symbol.name, current_symbol.section_name);
+          RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.symbol_id, current_symbol.name, current_section);
           relocation_data->value = second.offset;
           relocation_data->type = "R_X86_64_PC32";
-          relocation_data->addend = second.offset;
+          relocation_data->addend = 0;
           relocations.insert({current_symbol.name, *relocation_data});
         }
         
@@ -926,10 +927,11 @@ int Assembler::word_dir_second(smatch match)
           sectionNode.data.push_back((int)(symbol.value & 0xFFFF));
           sectionNode.data.push_back((int)((symbol.value >> 16) & 0xFFFF));
           //
-          RelocationTableNode *relocation_data = new RelocationTableNode(symbol.section_id, symbol.section_name, symbol.section_name);
-          relocation_data->value = current_line;
+          RelocationTableNode *relocation_data = new RelocationTableNode(symbol.section_id, symbol.section_name, current_section);
+          relocation_data->value = location_counter;
+          relocation_data->local = true;
           relocation_data->type = "R_X86_64_32";
-          relocation_data->addend = 0;
+          relocation_data->addend = location_counter;
           relocations.insert({symbol.name, *relocation_data});
         }
         else
@@ -943,8 +945,8 @@ int Assembler::word_dir_second(smatch match)
           symbol.section_id = current_section_id;
           symbol.section_name = current_section;
           symbol.name = current_section;
-          RelocationTableNode *relocation_data = new RelocationTableNode(symbol.symbol_id, symbol.name, symbol.section_name);
-          relocation_data->value = current_line;
+          RelocationTableNode *relocation_data = new RelocationTableNode(symbol.symbol_id, symbol.name, current_section);
+          relocation_data->value = location_counter;
           relocation_data->type = "R_X86_64_32";
           relocation_data->addend = 0;
           relocations.insert({symbol.name, *relocation_data});
@@ -2697,7 +2699,7 @@ void Assembler::outputTables()
   unsigned dataInt = sections.size();
   binary_output->write((char *)(&dataInt), sizeof(unsigned));
 
-  for (auto it = sections.cbegin(); it != sections.end(); ++it)
+  for (auto it = sections.begin(); it != sections.end(); ++it)
   {
     dataInt = (unsigned)it->second.data.size();
     binary_output->write((char *)(&dataInt), sizeof(unsigned)); // size
@@ -2710,6 +2712,7 @@ void Assembler::outputTables()
     // binary_output->write((char *)(&data_size), sizeof(data_size));
     // cout << "Duzina imena sekcije: " << len << " ime: " <<  it->second.name << endl;
     binary_output->write((char*)it->second.name.c_str(), len);
+    reverse(it->second.data.begin(), it->second.data.end()); //ne znam dal moze ovako da se prebaci na little-endian
     for (char c : it->second.data)
     {
       binary_output->write((char *)(&c), sizeof(c));
@@ -2755,6 +2758,7 @@ void Assembler::outputTables()
     len = (unsigned)it->second.type.size();
     binary_output->write((char *)(&len), sizeof(unsigned));
     binary_output->write(it->second.type.c_str(), len); // tip
+    binary_output->write((char *)(&it->second.local), sizeof(bool));
     // cout << it->second.symbol_id << " " << it->first << " " << it->second.section_id << "  " << it->second.addend << "  " << it->second.value << endl;
   }
   this->assembler_help_file << "Posle upisa: " << endl;
