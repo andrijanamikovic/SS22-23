@@ -757,9 +757,9 @@ int Assembler::process_extern_dir(smatch match)
       assembler_help_file << ".extern "
                           << "symbol_name: " << s << " location counter: " << location_counter << " section: " << this->current_section << endl;
       
-      LiteralPoolTable *literal = new LiteralPoolTable(symbol->value, 0);
-      literal->symbol = true;
-      current_pool.insert({symbol->name, *literal});
+      // LiteralPoolTable *literal = new LiteralPoolTable(symbol->value, 0);
+      // literal->symbol = true;
+      // current_pool.insert({symbol->name, *literal});
     }
     else
     {
@@ -799,9 +799,9 @@ int Assembler::process_global_dir(smatch match)
       symbols.insert({s, *symbol});
       assembler_help_file << ".global "
                           << "symbol_name: " << s << " location counter: " << location_counter << " section: " << symbol->section_name << endl;
-      LiteralPoolTable *literal = new LiteralPoolTable(symbol->value, 0);
-      literal->symbol = true;
-      current_pool.insert({symbol->name, *literal});
+      // LiteralPoolTable *literal = new LiteralPoolTable(symbol->value, 0);
+      // literal->symbol = true;
+      // current_pool.insert({symbol->name, *literal});
     }
     else
     {
@@ -926,7 +926,7 @@ int Assembler::word_dir_second(smatch match)
           sectionNode.data.push_back((int)(symbol.value & 0xFFFF));
           sectionNode.data.push_back((int)((symbol.value >> 16) & 0xFFFF));
           //
-          RelocationTableNode *relocation_data = new RelocationTableNode(symbol.section_id, symbol.name, symbol.section_name);
+          RelocationTableNode *relocation_data = new RelocationTableNode(symbol.section_id, symbol.section_name, symbol.section_name);
           relocation_data->value = current_line;
           relocation_data->type = "R_X86_64_32";
           relocation_data->addend = 0;

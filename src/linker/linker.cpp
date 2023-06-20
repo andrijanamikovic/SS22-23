@@ -12,7 +12,7 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
   this->output_file = output_file;
   this->linker_combined_file.open("linker.txt", ios::out);
   // Za svaki ulazni da ucitam binarni fajl i to da pakujem negde?
-
+  process_place();
   for (string file : input_files)
   {
     if (load_data_for_linker(file) < 0)
@@ -46,11 +46,27 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
   this->printSectionTableLinker();
   this->printSymbolTableLinker();
   this->printRelocationTableLinker();
+  // this->resolve_relocations();
   this->linker_combined_file.close();
   if (this->is_hax)
     this->make_hex_file();
   // else if (this->relocatable_output)
   //   this->relocate();
+}
+
+void Linker::process_place()
+{
+  smatch match;
+  for (string s : this->places)
+  {
+    if (regex_match(s, match, place_reg))
+    {
+      string section = match.str(1);
+      string adr = match.str(2);
+      long start = stol(adr, 0, 16);
+      startAddr.insert({section, start});
+    }
+  }
 }
 
 int Linker::load_data_for_linker(string file)
@@ -517,24 +533,60 @@ int Linker::resolve_relocations()
 {
   for (string file : input_files)
   {
-    unordered_map<string, RelocationTableNode> &relocation_table = relocations.at(file);
-    unordered_map<string, SymbolTableNode> &symbol_table = symbols.at(file);
-    unordered_map<string, SectionTableNode> &section_file = sections.at(file);
-    for (auto it = relocation_table.begin(); it != relocation_table.end(); ++it)
+    unordered_map<string, RelocationTableNode> &current_relocation_table = relocations.at(file);
+    unordered_map<string, SymbolTableNode> &current_symbols_table = symbols.at(file);
+    unordered_map<string, SectionTableNode> &current_section_table = sections.at(file);
+    for (auto it = current_relocation_table.begin(); it != current_relocation_table.end(); ++it)
     {
-      SymbolTableNode &current_symbol = output_symbols.at(it->first);
-      SectionTableNode &current_section_table = section_file.at(it->second.section_name);
-      if (!current_symbol.local)
-      {
-      }
-      if (&current_section_table == nullptr)
+      if (it->second.section_name == "UND")
         continue;
-      SectionTableNode &current_output = output_sections.at(current_section_table.name);
-      if (it->second.type == "R_X86_64_32")
+      if (current_symbols_table.find(it->second.name) == current_symbols_table.end())
+        continue;
+      if (it->second.name == it->second.section_name)
       {
+        // lokal
+        if ( output_symbols.find(it->second.name) == output_symbols.end()){
+          cout << "Nije nasao simbol: " << it->second.name <<" u fajlu: " << file << endl;
+          continue;
+        }
+
+        SymbolTableNode& current_sym = output_symbols.at(it->second.name);
+        SectionTableNode& current_section = output_sections.at(it->second.section_name);
+
+        if (it->second.type == "R_X86_64_32")
+        {
+
+        }
+        else if (it->second.type == "R_X86_64_PC32")
+        {
+
+        }
       }
-      else if (it->second.type == "R_X86_64_PC32")
+      else
       {
+        // global
+        cout << "Za simbol: " << it->second.name << " u sekciji: " << it->second.section_name << endl;
+        SymbolTableNode& current_sym = output_symbols.at(it->second.name);
+        SectionTableNode& current_section = output_sections.at(it->second.section_name);
+        long offset = current_section.address+it->second.addend; //adresa te lokacije
+        long value = current_section.data[offset] + it->second.value + current_sym.value;
+        if (it->second.type == "R_X86_64_32")
+        {
+          cout << "Ovde upisujem: " << value << " in file: " << file << " za symb " << it->second.name << " offset: "<< offset << endl;
+          current_section.data[offset] = ((char)(value >> 32));  
+          current_section.data[offset+1] = ((char)(value >> 16));  
+          current_section.data[offset+2] = ((char)(value >> 8));  
+          current_section.data[offset+3] = ((char)(value >> 0));  
+        }
+        else if (it->second.type == "R_X86_64_PC32")
+        {
+          value -= offset;
+          cout << "Ovde upisujem pc relativno : " << value << " in file: " << file << " za symb " << it->second.name  << " offset: "<< offset << endl;
+          current_section.data[offset] = ((char)(value >> 32));  
+          current_section.data[offset+1] = ((char)(value >> 16));  
+          current_section.data[offset+2] = ((char)(value >> 8));  
+          current_section.data[offset+3] = ((char)(value >> 0));  
+        }
       }
     }
   }

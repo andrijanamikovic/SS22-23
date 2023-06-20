@@ -7,6 +7,7 @@
 #include "./tables.h"
 #include <unordered_map>
 #include <fstream>
+#include <regex>
 
 
 using namespace std;
@@ -18,6 +19,7 @@ class Linker {
       Linker();
 
   private:
+    regex place_reg = regex("-place=([a-zA-Z][_A-Za-z0-9]*)@0x([0-9A-Fa-f]+)"); 
     bool is_hax;
     bool relocatable_output;
     int _section_id;
@@ -25,7 +27,9 @@ class Linker {
     list<string> input_files;
     list<string> places;
     string output_file;
+    unordered_map<string, long> startAddr;
     int load_data_for_linker(string file);
+    void process_place();
     int map_section_table();
     int map_symbol_table();
     int map_relocation_table();
