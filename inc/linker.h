@@ -17,6 +17,7 @@ class Linker {
   public:
       void link(bool is_hax, bool relocatable_output, list<string> input_files, list<string> places, string output_file);
       Linker();
+      static long memory_mapped_registers;
 
   private:
     regex place_reg = regex("-place=([a-zA-Z][_A-Za-z0-9]*)@0x([0-9A-Fa-f]+)"); 
@@ -33,8 +34,11 @@ class Linker {
     int map_section_table();
     int map_symbol_table();
     int map_relocation_table();
+    int move_sections();
     int resolve_relocations();
     void make_hex_file();
+    void make_relocatable_file();
+    int check_overlapping();
 
     void printSymbolTableLinker();
     void printRelocationTableLinker();

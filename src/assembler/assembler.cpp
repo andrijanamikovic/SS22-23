@@ -825,7 +825,7 @@ int Assembler::process_section_dir(smatch match)
 {
   int ret = 0;
   string section_label = ((string)match[0]);
-  string section_name = section_label.substr(section_label.find(" "), section_label.size());
+  string section_name = section_label.substr(section_label.find(" ")+1, section_label.size());
   section_label = section_label.substr(0, section_label.find(" "));
   if (sections.find(section_name) != sections.end())
   {
@@ -877,7 +877,7 @@ int Assembler::process_section_dir(smatch match)
 int Assembler::section_dir_second(smatch match)
 {
   string section_label = ((string)match[0]);
-  string section_name = section_label.substr(section_label.find(" "), section_label.size());
+  string section_name = section_label.substr(section_label.find(" ")+1, section_label.size());
   section_label = section_label.substr(0, section_label.find(" "));
   SectionTableNode &current_section_node = sections.at(this->current_section);
   savePoolData(this->current_section, &current_section_node);

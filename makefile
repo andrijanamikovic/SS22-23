@@ -51,6 +51,10 @@ LD2: linker.o
   -place=my_code@0x40000000 -place=math@0xF0000000 \
   -o program.hex \
   handler.o math.o main.o isr_terminal.o isr_timer.o isr_software.o
+LD3: linker.o
+	./linker \
+	-relocatable \
+	-o program.hex main.o handler.o math.o isr_terminal.o isr_timer.o isr_software.o
 
 linker.o:	$(LINKER_DIR)/main.cpp $(LINKER_DIR)/linker.cpp $(ASSEMBLER_DIR)/tables.cpp
 	g++ -g -o linker  $(LINKER_DIR)/main.cpp $(LINKER_DIR)/linker.cpp $(ASSEMBLER_DIR)/tables.cpp
