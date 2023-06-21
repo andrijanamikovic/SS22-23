@@ -25,8 +25,11 @@ class Linker {
     bool relocatable_output;
     int _section_id;
     int _symbol_id;
+    long startAddress;
+    long endAddress;
     list<string> input_files;
     list<string> places;
+    map<long, string> sorted_sections;
     string output_file;
     unordered_map<string, long> startAddr;
     int load_data_for_linker(string file);
