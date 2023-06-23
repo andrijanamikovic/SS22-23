@@ -39,6 +39,7 @@ class Linker {
     int map_relocation_table();
     int move_sections();
     int resolve_relocations();
+    int resolve_relocations_relocatable();
     void make_hex_file();
     void make_relocatable_file();
     int check_overlapping();
@@ -56,12 +57,12 @@ class Linker {
     //map of tables data from every file
     unordered_map<string, unordered_map<string,SectionTableNode>> sections;
     unordered_map< string, unordered_map<string,SymbolTableNode>> symbols;
-    unordered_map<string, unordered_map<string,RelocationTableNode>> relocations;
+    unordered_map<string, vector<RelocationTableNode>> relocations;
 
 
     unordered_map<string,SectionTableNode> output_sections;
     unordered_map<string,SymbolTableNode> output_symbols;
-    unordered_map<string,RelocationTableNode> output_relocations;
+    vector<RelocationTableNode> output_relocations;
 
 };
 

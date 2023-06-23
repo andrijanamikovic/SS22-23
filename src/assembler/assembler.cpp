@@ -120,7 +120,8 @@ void Assembler::mem_operand(string operands, string *operand, string *reg, strin
       operand = operand.substr(operand.find("+"), operand.size());
       operand = operand.substr(1, operand.find("]") - 1);
       process_literal_first(operand, current_section);
-    } else if (regex_search(operandVal, match, rx.register_absolute_operand_regex))
+    }
+    else if (regex_search(operandVal, match, rx.register_absolute_operand_regex))
     {
     }
     else if (regex_search(operandVal, match, rx.reg_dir_regex))
@@ -173,7 +174,7 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
     return;
   }
   poolData &data = pool.at(current_section);
-  int literalVal = data.size()*4;
+  int literalVal = data.size() * 4;
   cout << "Velicina bazena: " << data.size();
   cout << "End of section save the pool " << endl;
   current_section_node->data.push_back((char)(0x30));
@@ -195,23 +196,32 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
         second.offset = location_counter - 4;
         second.defined = true;
       }
-      if (second.symbol) {
+      if (second.symbol)
+      {
         SymbolTableNode &current_symbol = symbols.at(it.first);
-        if (current_symbol.local){
+        if (current_symbol.local)
+        {
+          // cout << "Lokal symbol: " << current_symbol.name << " In section: " << current_symbol.section_name << " a trenutno je " << current_section << endl;
           RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.section_id, current_symbol.section_name, current_section);
-          relocation_data->value = second.offset;
           relocation_data->type = "R_X86_64_PC32";
-          relocation_data->addend = second.offset;
+          relocation_data->addend = 0; // second.offset; dodovicu je 0 
           relocation_data->local = true;
-          relocations.insert({current_symbol.section_name, *relocation_data});
-        } else {
+          relocation_data->offset = location_counter + 4;
+          if (current_symbol.type == "SCTN")
+            relocation_data->section = true;
+          relocations.push_back(*relocation_data);
+        }
+        else
+        {
           RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.symbol_id, current_symbol.name, current_section);
-          relocation_data->value = second.offset;
           relocation_data->type = "R_X86_64_PC32";
           relocation_data->addend = 0;
-          relocations.insert({current_symbol.name, *relocation_data});
+          relocation_data->local = false;
+          relocation_data->offset = location_counter + 4;
+          if (current_symbol.type == "SCTN")
+            relocation_data->section = true;
+          relocations.push_back(*relocation_data);
         }
-        
       }
       location_counter += 4;
       current_section_node->size += 4;
@@ -351,7 +361,6 @@ int Assembler::process()
   }
   this->end = false;
   this->location_counter = 0;
-  this->location_counter = 0;
   this->current_line = 0;
   this->current_section = "UND";
   this->current_section_id = 0;
@@ -416,6 +425,7 @@ int Assembler::process_label(string label)
         return -1;
       }
       symbol.defined = true;
+      // symbol.local = true;
       symbol.value = location_counter;
       symbol.section_id = this->_section_id;
       symbol.section_name = this->current_section;
@@ -435,6 +445,19 @@ int Assembler::process_label(string label)
           literal.symbol = true;
           literal.offset = location_counter;
         }
+      }
+    }
+    cout << "Vec postoji simbol labela: " << endl;
+    for (auto it = relocations.begin(); it != relocations.end(); ++it)
+    {
+      if (it->name == label && it->local == false)
+      {
+        cout << "Jesi usao ovde za nesto da prepravis leba ti" << endl << endl;
+        it->local = true;
+        it->name = it->section_name;
+        // it->addend = location_counter;
+        it->offset = location_counter;
+        break;
       }
     }
   }
@@ -682,10 +705,10 @@ void Assembler::printSymbolTable()
 {
   this->assembler_help_file << endl
                             << "Symbol table: " << endl;
-  this->assembler_help_file << "Symbol_id Symbol_name  Section_id Section_name defined local extern" << endl;
+  this->assembler_help_file << "Symbol_id Symbol_name  Section_id Section_name defined local extern value" << endl;
   for (auto it = symbols.cbegin(); it != symbols.end(); ++it)
   {
-    this->assembler_help_file << it->second.symbol_id << " " << it->first << " " << it->second.section_id << "  " << it->second.section_name << "  " << it->second.defined << " " << it->second.local << "  " << it->second.extern_sym << endl;
+    this->assembler_help_file << it->second.symbol_id << " " << it->first << " " << it->second.section_id << "  " << it->second.section_name << "  " << it->second.defined << " " << it->second.local << "  " << it->second.extern_sym << " " << it->second.value<< endl;
   }
 }
 
@@ -693,10 +716,10 @@ void Assembler::printRelocationTable()
 {
   this->assembler_help_file << endl
                             << "Relocation table" << endl;
-  this->assembler_help_file << "Relocation_id Symbol_name  type addend value" << endl;
+  this->assembler_help_file << "Relocation_id Symbol_name  type addend offset" << endl;
   for (auto it = relocations.cbegin(); it != relocations.end(); ++it)
   {
-    this->assembler_help_file << it->second.relocation_id << " " << it->first << " " << it->second.type << "  " << it->second.addend << "  " << it->second.value << endl;
+    this->assembler_help_file << it->relocation_id << " " << it->name << " " << it->type << "  " << hex << it->addend  << " " << hex << it->offset << endl;
   }
 }
 
@@ -739,7 +762,8 @@ int Assembler::process_extern_dir(smatch match)
   string extern_label = ((string)match[0]);
   list<string> symbol_list = this->split(extern_label.substr(extern_label.find(" ") + 1, extern_label.size()), ",");
   extern_label = extern_label.substr(0, extern_label.find(" "));
-  if (pool.find("UND") == pool.end()){
+  if (pool.find("UND") == pool.end())
+  {
     poolData data;
     pool.insert({"UND", data});
   }
@@ -757,7 +781,7 @@ int Assembler::process_extern_dir(smatch match)
       symbols.insert({s, *symbol});
       assembler_help_file << ".extern "
                           << "symbol_name: " << s << " location counter: " << location_counter << " section: " << this->current_section << endl;
-      
+
       // LiteralPoolTable *literal = new LiteralPoolTable(symbol->value, 0);
       // literal->symbol = true;
       // current_pool.insert({symbol->name, *literal});
@@ -782,7 +806,8 @@ int Assembler::process_global_dir(smatch match)
   string global_label = ((string)match[0]);
   list<string> symbol_list = this->split(global_label.substr(global_label.find(" ") + 1, global_label.size()), ",");
   global_label = global_label.substr(0, global_label.find(" "));
-  if (pool.find("UND") == pool.end()){
+  if (pool.find("UND") == pool.end())
+  {
     poolData data;
     pool.insert({"UND", data});
   }
@@ -825,7 +850,7 @@ int Assembler::process_section_dir(smatch match)
 {
   int ret = 0;
   string section_label = ((string)match[0]);
-  string section_name = section_label.substr(section_label.find(" ")+1, section_label.size());
+  string section_name = section_label.substr(section_label.find(" ") + 1, section_label.size());
   section_label = section_label.substr(0, section_label.find(" "));
   if (sections.find(section_name) != sections.end())
   {
@@ -877,11 +902,14 @@ int Assembler::process_section_dir(smatch match)
 int Assembler::section_dir_second(smatch match)
 {
   string section_label = ((string)match[0]);
-  string section_name = section_label.substr(section_label.find(" ")+1, section_label.size());
+  string section_name = section_label.substr(section_label.find(" ") + 1, section_label.size());
   section_label = section_label.substr(0, section_label.find(" "));
   SectionTableNode &current_section_node = sections.at(this->current_section);
   savePoolData(this->current_section, &current_section_node);
   this->current_section = section_name;
+  this->location_counter = 0;
+  this->pool_distance = 0;
+  this->current_section_id = _section_id;
   return 0;
 }
 int Assembler::process_word_dir(smatch match)
@@ -928,11 +956,12 @@ int Assembler::word_dir_second(smatch match)
           sectionNode.data.push_back((int)((symbol.value >> 16) & 0xFFFF));
           //
           RelocationTableNode *relocation_data = new RelocationTableNode(symbol.section_id, symbol.section_name, current_section);
-          relocation_data->value = location_counter;
           relocation_data->local = true;
           relocation_data->type = "R_X86_64_32";
-          relocation_data->addend = location_counter;
-          relocations.insert({symbol.name, *relocation_data});
+          relocation_data->addend = 0; //location_counter; dodovic 0
+          relocation_data->offset = location_counter;
+          relocations.push_back(*relocation_data);
+          // relocation_data->offset = location_counter;
         }
         else
         {
@@ -946,10 +975,10 @@ int Assembler::word_dir_second(smatch match)
           symbol.section_name = current_section;
           symbol.name = current_section;
           RelocationTableNode *relocation_data = new RelocationTableNode(symbol.symbol_id, symbol.name, current_section);
-          relocation_data->value = location_counter;
           relocation_data->type = "R_X86_64_32";
           relocation_data->addend = 0;
-          relocations.insert({symbol.name, *relocation_data});
+          relocation_data->offset = location_counter;
+          relocations.push_back(*relocation_data);
         }
       }
       else if (!symbol.extern_sym)
@@ -1085,6 +1114,8 @@ int Assembler::end_dir_second(smatch match)
       ret = -1;
     }
   }
+  this->location_counter = 0;
+  this->pool_distance = 0;
   this->end = true;
   return ret;
 }
@@ -1250,12 +1281,20 @@ void Assembler::process_literal_first(string operand, string current_section)
     if (symbols.find(operand) != symbols.end())
     {
       SymbolTableNode &symbol = symbols.at(operand);
-      if (!symbol.extern_sym or !symbol.defined){
+      if (!symbol.extern_sym or !symbol.defined)
+      {
         LiteralPoolTable *literal = new LiteralPoolTable(symbol.value, symbol.value);
         symbol.used = true;
         literal->symbol = true;
         current.insert({operand, *literal});
       }
+    } else {
+      SymbolTableNode *symbol = new SymbolTableNode(++this->_symbol_id, 0, false, false, false);
+      LiteralPoolTable *literal = new LiteralPoolTable(symbol->value, symbol->value);
+      symbol->used = true; 
+      symbol->value = location_counter;
+      literal->symbol = true;
+      current.insert({operand, *literal});
     }
   }
 }
@@ -2711,8 +2750,8 @@ void Assembler::outputTables()
     // long data_size = it->second.data.size();
     // binary_output->write((char *)(&data_size), sizeof(data_size));
     // cout << "Duzina imena sekcije: " << len << " ime: " <<  it->second.name << endl;
-    binary_output->write((char*)it->second.name.c_str(), len);
-    reverse(it->second.data.begin(), it->second.data.end()); //ne znam dal moze ovako da se prebaci na little-endian
+    binary_output->write((char *)it->second.name.c_str(), len);
+    reverse(it->second.data.begin(), it->second.data.end()); // ne znam dal moze ovako da se prebaci na little-endian
     for (char c : it->second.data)
     {
       binary_output->write((char *)(&c), sizeof(c));
@@ -2730,7 +2769,7 @@ void Assembler::outputTables()
     binary_output->write((char *)(&dataC), sizeof(dataC));
     unsigned len = (unsigned)it->second.name.size();
     binary_output->write((char *)(&len), sizeof(unsigned));
-    binary_output->write(it->second.name.c_str(), len);                          // name
+    binary_output->write(it->second.name.c_str(), len);              // name
     binary_output->write((char *)(&it->second.value), sizeof(long)); // value
     len = (unsigned)it->second.section_name.size();
     binary_output->write((char *)(&len), sizeof(unsigned));
@@ -2745,20 +2784,21 @@ void Assembler::outputTables()
 
   for (auto it = relocations.cbegin(); it != relocations.end(); ++it)
   {
-    unsigned len = (unsigned)it->second.name.size();
+    unsigned len = (unsigned)it->name.size();
     binary_output->write((char *)(&len), sizeof(unsigned));
-    binary_output->write(it->second.name.c_str(), len); // name
-    len = (unsigned)it->second.section_name.size();
+    binary_output->write(it->name.c_str(), len); // name
+    len = (unsigned)it->section_name.size();
     binary_output->write((char *)(&len), sizeof(unsigned));
-    binary_output->write(it->second.section_name.c_str(), len); // section_name
+    binary_output->write(it->section_name.c_str(), len); // section_name
     // binary_output->write((char *)(&dataInt), sizeof(dataInt));
-    binary_output->write((char *)(&it->second.relocation_id), sizeof(it->second.relocation_id));
-    binary_output->write((char *)(&it->second.addend), sizeof(long));
-    binary_output->write((char *)(&it->second.value), sizeof(long));
-    len = (unsigned)it->second.type.size();
+    binary_output->write((char *)(&it->relocation_id), sizeof(it->relocation_id));
+    binary_output->write((char *)(&it->addend), sizeof(long));
+    len = (unsigned)it->type.size();
     binary_output->write((char *)(&len), sizeof(unsigned));
-    binary_output->write(it->second.type.c_str(), len); // tip
-    binary_output->write((char *)(&it->second.local), sizeof(bool));
+    binary_output->write(it->type.c_str(), len); // tip
+    binary_output->write((char *)(&it->local), sizeof(bool));
+    binary_output->write((char *)(&it->section), sizeof(bool));
+    binary_output->write((char *)(&it->offset), sizeof(long));
     // cout << it->second.symbol_id << " " << it->first << " " << it->second.section_id << "  " << it->second.addend << "  " << it->second.value << endl;
   }
   this->assembler_help_file << "Posle upisa: " << endl;

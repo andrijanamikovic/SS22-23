@@ -76,7 +76,7 @@ lex.yy.o: lex.yy.c
 
 
 clean :
-	rm  linker.txt *_linker.txt
+	rm  linker.txt *_linker.txt *.hex hex_help.txt reloc_help.txt
 
 clean_as:
 	rm *.o*

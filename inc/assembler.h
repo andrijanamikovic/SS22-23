@@ -30,7 +30,7 @@ class Assembler {
     int _section_id;
     unordered_map<string,SectionTableNode> sections;
     unordered_map<string,SymbolTableNode> symbols;
-    unordered_map<string,RelocationTableNode> relocations;
+    vector<RelocationTableNode> relocations;
     typedef unordered_map<string, LiteralPoolTable> poolData;
     unordered_map<string, poolData> pool;
     

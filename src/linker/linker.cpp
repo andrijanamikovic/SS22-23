@@ -22,23 +22,27 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
   }
   // this->printSectionTableInFile();
   int ret = 0;
+  cout << "Map sections called" << endl;
   ret = this->map_section_table();
   if (ret < 0)
   {
     cout << "Error while mapping sections" << endl;
     return;
   }
+  cout << "Map sections done, call map symbols" << endl;
   ret = this->map_symbol_table();
   if (ret < 0)
   {
     cout << "Error while mapping symbols" << endl;
     return;
   }
-
+  this->linker_help_file << endl << "Reloc before:" << endl << endl;
+  this->printRelocationTableLinker(); 
+  cout << "Map symbols done, call map relocations" << endl;
   ret = this->map_relocation_table();
   if (ret < 0)
   {
-    cout << "Error while rellocations" << endl;
+    cout << "Error while mapping rellocations" << endl;
     return;
   }
   this->linker_combined_file << endl
@@ -48,14 +52,31 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
   this->printSectionTableLinker();
   this->printSymbolTableLinker();
   this->printRelocationTableLinker();
-  this->linker_combined_file.close();
+  cout << "Map relocations done, call resolve and make hex or make relocatable" << endl;
   if (this->is_hax)
   {
-    this->resolve_relocations(); // doesn't work
+    ret = this->resolve_relocations(); 
+    if (ret < 0)
+    {
+      cout << "Error while resolving rellocations for hex" << endl;
+      return;
+    }
     this->make_hex_file();
   }
   else if (this->relocatable_output)
+  {
+    this->resolve_relocations_relocatable();
+    if (ret < 0)
+    {
+      cout << "Error while resolving rellocations for relocatable" << endl;
+      return;
+    }
     this->make_relocatable_file();
+  }
+  this->linker_combined_file << endl << "At the end: " << endl;
+  this->printSectionTableLinker();
+  this->linker_combined_file << endl;
+  this->linker_combined_file.close();
 }
 
 void Linker::process_place()
@@ -189,7 +210,7 @@ int Linker::load_data_for_linker(string file)
   this->linker_help_file << endl
                          << "Velicina tabele relokacije: " << relocation_table_size << endl;
 
-  unordered_map<string, RelocationTableNode> file_relocations;
+  vector<RelocationTableNode> file_relocations;
 
   for (int i = 0; i < relocation_table_size; i++)
   {
@@ -216,10 +237,6 @@ int Linker::load_data_for_linker(string file)
     input_data.read((char *)&addend, sizeof(addend)); // addend
     this->linker_help_file << " Addend: " << addend;
     current_relocation->addend = addend;
-    long value;
-    input_data.read((char *)&value, sizeof(value)); // value
-    this->linker_help_file << " Value: " << value;
-    current_relocation->value = value;
     input_data.read((char *)&len, sizeof(unsigned)); // symbol name len
     this->linker_help_file << " Len: " << len;
     name.resize(len);
@@ -230,7 +247,15 @@ int Linker::load_data_for_linker(string file)
     input_data.read((char *)(&local), sizeof(bool));
     current_relocation->local = local;
     this->linker_help_file << " local: " << local;
-    file_relocations.insert({current_relocation->name, *current_relocation});
+    bool section;
+    input_data.read((char *)(&section), sizeof(bool));
+    current_relocation->section = section;
+    this->linker_help_file << " section: " << section;
+    long offset;
+    input_data.read((char *)&offset, sizeof(offset)); // addend
+    this->linker_help_file << " offset: " << offset;
+    current_relocation->offset = offset;
+    file_relocations.push_back(*current_relocation);
   }
 
   this->relocations.insert({file, file_relocations});
@@ -254,7 +279,7 @@ int Linker::map_section_table()
   for (string file : input_files)
   {
     unordered_map<string, SectionTableNode> &current_section_table = sections.at(file);
-    unordered_map<string, RelocationTableNode> &current_relocation_table = relocations.at(file);
+    vector<RelocationTableNode> &current_relocation_table = relocations.at(file);
     unordered_map<string, SymbolTableNode> &current_symbols_table = symbols.at(file);
     for (auto it = current_section_table.begin(); it != current_section_table.end(); ++it)
     {
@@ -336,6 +361,8 @@ int Linker::map_section_table()
       old_size = current.size;
     }
   }
+  cout << "Maped sections now move them " << endl;
+  this->linker_help_file.close();
   if (!relocatable_output)
   {
     ret = move_sections();
@@ -347,6 +374,10 @@ int Linker::move_sections()
   long next_address = 0;
   long last_section_address = 0;
   long last_non_mapped_section_address = 0;
+  if (startAddr.empty())
+  {
+    goto label;
+  }
   this->startAddress = startAddr.begin()->second;
   for (auto it = startAddr.begin(); it != startAddr.end(); ++it)
   {
@@ -380,6 +411,7 @@ int Linker::move_sections()
       last_non_mapped_section_address = last_section_address > last_non_mapped_section_address ? last_section_address : last_non_mapped_section_address;
     }
   }
+label:
   next_address = last_non_mapped_section_address;
 
   for (auto it = output_sections.begin(); it != output_sections.end(); ++it)
@@ -501,48 +533,33 @@ int Linker::map_relocation_table()
   for (string file : input_files)
   {
     unordered_map<string, SectionTableNode> &current_section_table = sections.at(file);
-    unordered_map<string, RelocationTableNode> &current_relocation_table = relocations.at(file);
+    vector<RelocationTableNode> &current_relocation_table = relocations.at(file);
     unordered_map<string, SymbolTableNode> &current_symbols_table = symbols.at(file);
     for (auto it = current_relocation_table.begin(); it != current_relocation_table.end(); ++it)
     {
       // if (it->second.section_name == "UND")
       //   continue;
-      SymbolTableNode current_sym = current_symbols_table.at(it->first);
+
+      SymbolTableNode current_sym = current_symbols_table.at(it->name);
       RelocationTableNode *new_relloc = new RelocationTableNode();
       SymbolTableNode global_sym;
-      if (it->second.local)
+      if (it->local)
       {
-        if (it->second.section_name == "UND")
-          global_sym = output_symbols.at(it->second.section_name);
+        global_sym = output_symbols.at(it->section_name);
       }
       else
       {
-        global_sym = output_symbols.at(it->first);
+        global_sym = output_symbols.at(it->name);
       }
       new_relloc->relocation_id = global_sym.symbol_id;
-      new_relloc->section_name = it->second.section_name;
-      new_relloc->name = it->second.name;
-      new_relloc->type = it->second.type;
-      new_relloc->value = it->second.value;
+      new_relloc->section_name = it->section_name;
+      new_relloc->name = it->name;
+      new_relloc->type = it->type;
       new_relloc->filename = file;
-      new_relloc->addend = it->second.addend;
-      new_relloc->local = it->second.local;
-      new_relloc->offset = it->second.value + current_section_table.at(it->second.section_name).address; //- output_sections.at(it->second.section_name).address;
-      if (it->second.local)
-        new_relloc->addend += current_section_table.at(it->second.name).address;
-      if (output_relocations.find(it->first) != output_relocations.end())
-      {
-        RelocationTableNode &relloc = output_relocations.at(it->first);
-        if (output_symbols.at(it->first).section_name != relloc.section_name)
-        {
-          output_relocations.erase(it->first);
-          output_relocations.insert({it->first, *new_relloc});
-        }
-      }
-      else
-      {
-        output_relocations.insert({it->first, *new_relloc});
-      }
+      new_relloc->addend = it->addend;
+      new_relloc->local = it->local;
+      new_relloc->offset = it->offset + current_section_table.at(it->section_name).address - output_sections.at(it->section_name).address;
+      output_relocations.push_back(*new_relloc);
     }
   }
   return ret;
@@ -558,7 +575,7 @@ void Linker::printSymbolTableLinker()
   this->linker_combined_file << "Symbol_id Symbol_name  Section_id Section_name defined local extern type value" << endl;
   for (auto it = output_symbols.cbegin(); it != output_symbols.end(); ++it)
   {
-    this->linker_combined_file << it->second.symbol_id << " " << it->first << " " << it->second.section_id << "  " << it->second.section_name << "  " << it->second.defined << "" << it->second.local << "" << it->second.extern_sym << " " << it->second.type << " " << it->second.value << endl;
+    this->linker_combined_file << it->second.symbol_id << " " << it->first << " " << it->second.section_id << "  " << it->second.section_name << "  " << it->second.defined << "" << it->second.local << "" << it->second.extern_sym << " " << it->second.type << " " << hex << it->second.value << endl;
   }
   for (string file : input_files)
   {
@@ -605,21 +622,21 @@ void Linker::printRelocationTableLinker()
 {
   for (string file : input_files)
   {
-    unordered_map<string, RelocationTableNode> reloc = relocations.at(file);
+    vector<RelocationTableNode> reloc = relocations.at(file);
     this->linker_combined_file << endl
                                << "Relocation table file: " << file << endl;
-    this->linker_combined_file << "Relocation_id Symbol_name Section_name addend type value local offset" << endl;
+    this->linker_combined_file << "Relocation_id Symbol_name Section_name addend type local offset" << endl;
     for (auto it = reloc.cbegin(); it != reloc.end(); ++it)
     {
-      this->linker_combined_file << it->second.relocation_id << " " << it->first << "  " << it->second.section_name << " " << it->second.addend << "  " << it->second.type << " " << it->second.value << " " << it->second.local << " " << it->second.offset << endl;
+      this->linker_combined_file << it->relocation_id << " " << it->name << "  " << it->section_name << " " << hex << it->addend << "  " << it->type << " " << it->local << " " << hex << it->offset << endl;
     }
   }
   this->linker_combined_file << endl
                              << "Relocation table combined: " << endl;
-  this->linker_combined_file << "Relocation_id Symbol_name Section_name addend type value local offset" << endl;
+  this->linker_combined_file << "Relocation_id Symbol_name Section_name addend type local offset" << endl;
   for (auto it = output_relocations.cbegin(); it != output_relocations.end(); ++it)
   {
-    this->linker_combined_file << it->second.relocation_id << " " << it->first << "  " << it->second.section_name << " " << it->second.addend << "  " << it->second.type << " " << it->second.value << " " << it->second.local << " " << it->second.offset << endl;
+    this->linker_combined_file << it->relocation_id << " " << it->name << "  " << it->section_name << " " << hex << it->addend << "  " << it->type << " " << it->local << " " << hex << it->offset << endl;
   }
 }
 
@@ -633,10 +650,10 @@ void Linker::printSectionTableInFile()
     for (auto it = it1->second.cbegin(); it != it1->second.end(); ++it)
     {
       this->linker_combined_file << it->second.section_id << " " << it->first << " " << it->second.address << "  " << it->second.size << " " << it->second.data.size() << " ";
-      // for (auto c : it->second.data)
-      // {
-      //   linker_combined_file << (char)c;
-      // }
+      for (char c : it->second.data)
+      {
+        linker_combined_file << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c) << ' ';
+      }
       linker_combined_file << endl;
     }
   }
@@ -649,11 +666,12 @@ void Linker::printSectionTableLinker()
   this->linker_combined_file << "Section_id Section_name  Section_address Section_size Data_len" << endl;
   for (auto it = output_sections.cbegin(); it != output_sections.end(); ++it)
   {
-    this->linker_combined_file << it->second.section_id << " " << it->first << " " << it->second.address << "  " << it->second.size << " " << it->second.data.size() << " ";
-    // for (auto c : it->second.data)
-    // {
-    //   linker_combined_file << (char)c;
-    // }
+    this->linker_combined_file << it->second.section_id << " " << it->first << " " << hex << it->second.address << "  " << hex << it->second.size << " " << hex << it->second.data.size() << " ";
+    linker_combined_file << "Data: " << endl;
+    for (char c : it->second.data)
+      {
+        linker_combined_file << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c) << ' ';
+      }
     linker_combined_file << endl;
   }
 }
@@ -662,36 +680,48 @@ int Linker::resolve_relocations()
 {
   long value;
   long offset;
-  cout << "Jel udjes ti ovde? " << endl;
+  this->linker_help_file << "Resolve relocations " << endl;
   for (auto it = output_relocations.begin(); it != output_relocations.end(); ++it)
   {
-    RelocationTableNode &current_reloc = it->second;
-    SectionTableNode &current_section = output_sections.at(it->second.section_name);
-    if (output_symbols.find(it->first) == output_symbols.end())
+    RelocationTableNode &current_reloc = *it;
+    SectionTableNode &current_section = output_sections.at(it->section_name);
+    if (output_symbols.find(it->name) == output_symbols.end())
     {
       cout << "Error" << endl;
       return -1;
     }
-    SymbolTableNode current = output_symbols.at(it->first);
-    if (it->second.type == "R_X86_64_PC32")
-    {
-      value = current.value + it->second.addend - it->second.offset;
+    if (output_sections.find(it->name) == output_sections.end()){
+      //symbol
+      value = output_symbols.find(it->name)->second.value;
+      this->linker_help_file << " symbol + " << value << endl;
+    } else {
+      //section
+      value = sections.find(it->filename)->second.find(it->name)->second.address;
+      this->linker_help_file << " section + " << value << endl;
     }
-    else if (it->second.type == "R_X86_64_32")
+    SymbolTableNode current = output_symbols.at(it->name);
+    offset = 0;
+    if (it->type == "R_X86_64_PC32")
     {
-      value = current.value + it->second.addend;
+      offset = it->offset;
+      offset += sections.at(it->filename).at(it->section_name).address - output_sections.at(it->section_name).address;
+    }
+    else if (it->type == "R_X86_64_32")
+    {
+      offset = it->offset;
+      value = current.value + it->addend;
     }
     else
     {
       cout << "Error while resolving relocation";
       return -1;
     }
-    offset = it->second.offset - current_section.address;
-    current_section.data[offset] = ((char)(value));
-    current_section.data[offset - 1] = ((char)(value >> 8));
-    current_section.data[offset - 2] = ((char)(value >> 16));
-    current_section.data[offset - 3] = ((char)(value >> 32));
-    this->linker_combined_file << "Relokacija: " << it->first << " u sekciji: " << it->second.section_name << " na offsetu: " << offset << " sa vrednosti: " << value << endl; 
+    value += it->addend;
+    current_section.data[offset] = ((char)(0xff & value));
+    current_section.data[offset + 1] = ((char)(0xff & value >> 8));
+    current_section.data[offset + 2] = ((char)(0xff & value >> 16));
+    current_section.data[offset + 3] = ((char)(0xff & value >> 32)); //+ ili -?
+    this->linker_combined_file << "Relokacija: " << it->name << " u sekciji: " << it->section_name << " na offsetu: " << offset << " sa vrednosti: " << value << endl;
     // if ((!current.local && !current.extern_sym) || current.type == "SCTN")
     // {
     //   current_reloc.addend += current.value;
@@ -731,15 +761,15 @@ void Linker::make_hex_file()
   for (auto it = sorted_sections.begin(); it != sorted_sections.end(); ++it)
   {
     SectionTableNode current_Section = output_sections.at(it->second);
-    if (i != it->first && (i + 1) % 16 != 0)
-    {
-      while (i++ % 16 != 0)
-      {
-        *hex_help << setfill('0') << std::setw(5) << hex << " ";
-      }
-      *hex_help << endl;
-      i = it->first;
-    }
+    // if (i != it->first && (i + 1) % 16 != 0)
+    // {
+    //   while (i++ % 16 != 0)
+    //   {
+    //     *hex_help << setfill('0') << std::setw(5) << hex << " ";
+    //   }
+    //   *hex_help << endl;
+    //   i = it->first;
+    // }
 
     for (unsigned char c : current_Section.data)
     {
@@ -760,6 +790,31 @@ void Linker::make_hex_file()
 
   hex_file->close();
   hex_help->close();
+}
+
+int Linker::resolve_relocations_relocatable() {
+  int ret = 0;
+  long value;
+  for (RelocationTableNode current_relocation : output_relocations) {
+    if (output_sections.find(current_relocation.name) == output_sections.end()){
+      continue;
+    }
+    else {
+      value = sections.at(current_relocation.filename).at(current_relocation.name).address;
+    }
+    // int lower = ((output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset] << 8) | (output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset+1]));
+    // int higher =((output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 2] << 8) | (output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset+3]));
+    // long new_value = (long)((higher << 16) | (0xFFFF & lower));
+    long new_value = output_symbols.at(current_relocation.name).value;
+    value += new_value;
+    // cout << "Hoce da upise novu vrednost: " << value << " za relokaciju: " << current_relocation.name << " from data added: " << new_value << " on offset: " <<  hex <<current_relocation.offset << endl;
+
+    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset] = (0xFF & value);
+    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset+1] = (0xFF & (value >> 8));
+    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset+2] = (0xFF & (value >> 16));
+    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset+3] = (0xFF & (value >> 32));
+  }
+  return ret;
 }
 
 void Linker::make_relocatable_file()
@@ -825,20 +880,19 @@ void Linker::make_relocatable_file()
 
   for (auto it = output_relocations.cbegin(); it != output_relocations.end(); ++it)
   {
-    unsigned len = (unsigned)it->second.name.size();
+    unsigned len = (unsigned)it->name.size();
     reloc_file->write((char *)(&len), sizeof(unsigned));
-    reloc_file->write(it->second.name.c_str(), len); // name
-    len = (unsigned)it->second.section_name.size();
+    reloc_file->write(it->name.c_str(), len); // name
+    len = (unsigned)it->section_name.size();
     reloc_file->write((char *)(&len), sizeof(unsigned));
-    reloc_file->write(it->second.section_name.c_str(), len); // section_name
+    reloc_file->write(it->section_name.c_str(), len); // section_name
     // binary_output->write((char *)(&dataInt), sizeof(dataInt));
-    reloc_file->write((char *)(&it->second.relocation_id), sizeof(it->second.relocation_id));
-    reloc_file->write((char *)(&it->second.addend), sizeof(long));
-    reloc_file->write((char *)(&it->second.value), sizeof(long));
-    len = (unsigned)it->second.type.size();
+    reloc_file->write((char *)(&it->relocation_id), sizeof(it->relocation_id));
+    reloc_file->write((char *)(&it->addend), sizeof(long));
+    len = (unsigned)it->type.size();
     reloc_file->write((char *)(&len), sizeof(unsigned));
-    reloc_file->write(it->second.type.c_str(), len); // tip
-    reloc_file->write((char *)(&it->second.local), sizeof(bool));
+    reloc_file->write(it->type.c_str(), len); // tip
+    reloc_file->write((char *)(&it->local), sizeof(bool));
     // cout << it->second.symbol_id << " " << it->first << " " << it->second.section_id << "  " << it->second.addend << "  " << it->second.value << endl;
   }
   reloc_file->close();

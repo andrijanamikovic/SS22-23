@@ -29,9 +29,9 @@ class RelocationTableNode {
     string section_name;
     string filename;
     long addend;
-    long value;
     long offset;
     bool local = false;
+    bool section = false;
     RelocationTableNode(int relocation_id, string name, string section_name);
     RelocationTableNode();
 
