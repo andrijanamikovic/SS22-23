@@ -767,6 +767,13 @@ void Linker::make_hex_file()
     return;
   }
   long i = sorted_sections.begin()->first;
+  int val = output_sections.size();
+  if (output_sections.find("UND") != output_sections.end())
+  {
+    val--;
+  }
+  *hex_help << "Number of sections: " << val << endl;
+  hex_file->write((char *)&val, sizeof(val));
   for (auto it = sorted_sections.begin(); it != sorted_sections.end(); ++it)
   {
     SectionTableNode current_Section = output_sections.at(it->second);
@@ -779,20 +786,42 @@ void Linker::make_hex_file()
     //   *hex_help << endl;
     //   i = it->first;
     // }
+    long startAddress = current_Section.address;
+    *hex_help << "Start addres of section: " << current_Section.name << ": " << hex << startAddress << endl;
+    hex_file->write((char *)&startAddress, sizeof(startAddress));
+    int size = current_Section.size;
+    *hex_help << "Size of data: " << size << endl;
+    hex_file->write((char *)&size, sizeof(size));
+    i = current_Section.address;
+    while (i % 16 != 0)
+    {
+      i--;
+    }
 
+    while (i < current_Section.address)
+    {
+      if (i % 16 == 0)
+      {
+        *hex_help << std::setfill('0') << std::setw(8) << hex << (0xFFFFFFFF & i) << ": ";
+      }
+      *hex_help << setfill('0') << std::setw(5) << " ";
+      i++;
+    }
     for (unsigned char c : current_Section.data)
     {
       if (i % 16 == 0)
       {
-        *hex_help << std::setfill('0') << std::setw(8) << hex << (int)i << ": ";
+        *hex_help << std::setfill('0') << std::setw(8) << hex << (0xFFFFFFFF & i) << ": ";
       }
+
       hex_file->write((char *)&c, sizeof(c));
-      *hex_help << setfill('0') << std::setw(4) << hex << (long)c << " ";
+      *hex_help << setfill('0') << std::setw(4) << hex << (0xFFFF & c) << " ";
       if (++i % 16 == 0)
       {
         *hex_help << endl;
       }
     }
+    *hex_help << endl;
   }
   unsigned char c = '\n';
   hex_file->write((char *)&c, sizeof(c));

@@ -6,19 +6,23 @@
 #include <string.h>
 #include <fstream>
 #include <termios.h>
+#include <vector>
 
 //Za B nivo imam i terminal
 
 using namespace std;
 
-const int MEM_MAPPED_REGISTERS = 0xFFFFFF00; 
-const int MAPPED_REG_SIZE = 256;
-const int START_ADDRESS = 0x40000000;
-const int term_out_min = 0xFFFFFF00;
-const int term_out_max = 0xFFFFFF03;
-const int term_in_min = 0xFFFFFF04;
-const int term_in_max = 0xFFFFFF07;
-const int MEM_SIZE = 0x100000;
+const long MEM_MAPPED_REGISTERS = 0xFFFFFF00; 
+const long MAPPED_REG_SIZE = 256;
+const long START_ADDRESS = 0x40000000;
+const long term_out_min = 0xFFFFFF00;
+const long term_out_max = 0xFFFFFF03;
+const long term_in_min = 0xFFFFFF04;
+const long term_in_max = 0xFFFFFF07;
+const unsigned long MEM_SIZE = 0xFFFFFFFF;
+const int BYTE = 1;
+const int WORD = 2;
+const int DWORD = 4;
 
 class Emulator {
 
@@ -69,7 +73,9 @@ enum Interrupts {
 };
 
 struct Segment{
-
+  long startAddress;
+  int size;
+  vector<char> data;
 };
 
 
@@ -83,9 +89,17 @@ private:
   string input_file;
   ifstream input_data;
   ofstream emulator_help_file;
-  char memory[MEM_SIZE];
+  vector<Segment> segments;
+  vector<char> memory;
   bool running;
+  int reg[16]; // long?
   int load_data_for_emulator();
+  int load_to_memory();
+  long read_instruction();
+  int execute();
+  int interrupt();
+  void print_register_output();
+  long read_dword(int address);
 };
 
 #endif
