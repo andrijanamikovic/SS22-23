@@ -18,7 +18,10 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
   for (string file : input_files)
   {
     if (load_data_for_linker(file) < 0)
+    {
+      cout << "Error while reading data from file: " + file << endl;
       return;
+    }
   }
   // this->printSectionTableInFile();
   int ret = 0;
@@ -36,8 +39,10 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
     cout << "Error while mapping symbols" << endl;
     return;
   }
-  this->linker_help_file << endl << "Reloc before:" << endl << endl;
-  this->printRelocationTableLinker(); 
+  this->linker_help_file << endl
+                         << "Reloc before:" << endl
+                         << endl;
+  this->printRelocationTableLinker();
   cout << "Map symbols done, call map relocations" << endl;
   ret = this->map_relocation_table();
   if (ret < 0)
@@ -55,7 +60,7 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
   cout << "Map relocations done, call resolve and make hex or make relocatable" << endl;
   if (this->is_hax)
   {
-    ret = this->resolve_relocations(); 
+    ret = this->resolve_relocations();
     if (ret < 0)
     {
       cout << "Error while resolving rellocations for hex" << endl;
@@ -73,7 +78,8 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
     }
     this->make_relocatable_file();
   }
-  this->linker_combined_file << endl << "At the end: " << endl;
+  this->linker_combined_file << endl
+                             << "At the end: " << endl;
   this->printSectionTableLinker();
   this->linker_combined_file << endl;
   this->linker_combined_file.close();
@@ -669,9 +675,9 @@ void Linker::printSectionTableLinker()
     this->linker_combined_file << it->second.section_id << " " << it->first << " " << hex << it->second.address << "  " << hex << it->second.size << " " << hex << it->second.data.size() << " ";
     linker_combined_file << "Data: " << endl;
     for (char c : it->second.data)
-      {
-        linker_combined_file << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c) << ' ';
-      }
+    {
+      linker_combined_file << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c) << ' ';
+    }
     linker_combined_file << endl;
   }
 }
@@ -690,12 +696,15 @@ int Linker::resolve_relocations()
       cout << "Error" << endl;
       return -1;
     }
-    if (output_sections.find(it->name) == output_sections.end()){
-      //symbol
+    if (output_sections.find(it->name) == output_sections.end())
+    {
+      // symbol
       value = output_symbols.find(it->name)->second.value;
       this->linker_help_file << " symbol + " << value << endl;
-    } else {
-      //section
+    }
+    else
+    {
+      // section
       value = sections.find(it->filename)->second.find(it->name)->second.address;
       this->linker_help_file << " section + " << value << endl;
     }
@@ -792,14 +801,18 @@ void Linker::make_hex_file()
   hex_help->close();
 }
 
-int Linker::resolve_relocations_relocatable() {
+int Linker::resolve_relocations_relocatable()
+{
   int ret = 0;
   long value;
-  for (RelocationTableNode current_relocation : output_relocations) {
-    if (output_sections.find(current_relocation.name) == output_sections.end()){
+  for (RelocationTableNode current_relocation : output_relocations)
+  {
+    if (output_sections.find(current_relocation.name) == output_sections.end())
+    {
       continue;
     }
-    else {
+    else
+    {
       value = sections.at(current_relocation.filename).at(current_relocation.name).address;
     }
     // int lower = ((output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset] << 8) | (output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset+1]));
@@ -810,9 +823,9 @@ int Linker::resolve_relocations_relocatable() {
     // cout << "Hoce da upise novu vrednost: " << value << " za relokaciju: " << current_relocation.name << " from data added: " << new_value << " on offset: " <<  hex <<current_relocation.offset << endl;
 
     output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset] = (0xFF & value);
-    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset+1] = (0xFF & (value >> 8));
-    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset+2] = (0xFF & (value >> 16));
-    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset+3] = (0xFF & (value >> 32));
+    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 1] = (0xFF & (value >> 8));
+    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 2] = (0xFF & (value >> 16));
+    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 3] = (0xFF & (value >> 32));
   }
   return ret;
 }

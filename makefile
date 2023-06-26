@@ -59,8 +59,11 @@ LD3: linker.o
 linker.o:	$(LINKER_DIR)/main.cpp $(LINKER_DIR)/linker.cpp $(ASSEMBLER_DIR)/tables.cpp
 	g++ -g -o linker  $(LINKER_DIR)/main.cpp $(LINKER_DIR)/linker.cpp $(ASSEMBLER_DIR)/tables.cpp
 
-EM:
+EM: emulator.exe
+	./emulator program.hex
 
+emulator.exe: $(EMULATOR_DIR)/main.cpp $(EMULATOR_DIR)/emulator.cpp $(ASSEMBLER_DIR)/tables.cpp
+	g++ -g -o emulator $(EMULATOR_DIR)/main.cpp $(EMULATOR_DIR)/emulator.cpp $(ASSEMBLER_DIR)/tables.cpp
 
 assembler.tab.c ./inc/assembler.tab.h: $(ASSEMBLER_DIR)/assembler.y
 	bison -d $(ASSEMBLER_DIR)/assembler.y
