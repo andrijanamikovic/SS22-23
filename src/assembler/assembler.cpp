@@ -187,10 +187,10 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
     LiteralPoolTable &second = it.second;
     if (!second.stored)
     {
-      current_section_node->data.push_back((char)(second.name >> 32));
-      current_section_node->data.push_back((char)(second.name >> 16));
-      current_section_node->data.push_back((char)(second.name >> 8));
       current_section_node->data.push_back((char)(second.name));
+      current_section_node->data.push_back((char)(second.name >> 8));
+      current_section_node->data.push_back((char)(second.name >> 16));
+      current_section_node->data.push_back((char)(second.name >> 24));
       if (!second.defined)
       {
         second.offset = location_counter - 4;
@@ -2741,6 +2741,7 @@ void Assembler::outputTables()
   for (auto it = sections.begin(); it != sections.end(); ++it)
   {
     dataInt = (unsigned)it->second.data.size();
+    vector<char> data = it->second.data;
     binary_output->write((char *)(&dataInt), sizeof(unsigned)); // size
     unsigned len = (unsigned)it->second.name.size();
     binary_output->write((char *)(&len), sizeof(unsigned));
@@ -2751,8 +2752,10 @@ void Assembler::outputTables()
     // binary_output->write((char *)(&data_size), sizeof(data_size));
     // cout << "Duzina imena sekcije: " << len << " ime: " <<  it->second.name << endl;
     binary_output->write((char *)it->second.name.c_str(), len);
-    reverse(it->second.data.begin(), it->second.data.end()); // ne znam dal moze ovako da se prebaci na little-endian
-    for (char c : it->second.data)
+    convert_to_little_endian(&data);
+    // reverse(it->second.data.begin(), it->second.data.end()); // ne znam dal moze ovako da se prebaci na little-endian
+    cout << "nece u fore? " << data.size() << endl;
+    for (char c : data)
     {
       binary_output->write((char *)(&c), sizeof(c));
     }
@@ -2804,3 +2807,23 @@ void Assembler::outputTables()
   this->assembler_help_file << "Posle upisa: " << endl;
   this->printRelocationTable();
 }
+
+void Assembler::convert_to_little_endian(vector<char> *data){
+  if (data->size() % 4 != 0) {
+    return;
+  }
+  int i = 0;
+  int size = data->size();
+  cout << "Velcin: " << size << endl;
+  auto begin = data->begin();
+  while (i < size){
+    auto start = next(begin, i);
+    auto end = next(begin, i+4);
+    reverse(start, end);
+    i = i +4;
+  }
+  size = data->size();
+  cout << "Izasao iz while " << size << endl;
+  return;
+}
+

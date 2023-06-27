@@ -121,7 +121,6 @@ int Emulator::load_to_memory()
         return -1;
       }
       memory[i + s.startAddress] = s.data[i];
-      cout << "Upisujem u memoriju na adresi: " << hex << i+s.startAddress << " = " << hex << setfill('0') << setw(4) <<  s.data[i] << endl;
     }
   }
   cout << memory.size() << endl;
@@ -161,7 +160,7 @@ long Emulator::read_instruction()
   long opcode;
   for (int i = 0; i < 30; i++)
   {
-    cout << "Procitano: " << hex << read_dword(reg[pc]) << endl;
+    this->emulator_help_file << "Na adresi: " << hex<< reg[pc] << "Procitano: " << setfill('0') << std::setw(8) << hex << read_dword(reg[pc]) << endl;
     reg[pc] += 4;
   }
   return ret;
@@ -182,21 +181,14 @@ int Emulator::interrupt()
 long Emulator::read_dword(int address)
 {
   long ret = 0;
-  char byte1;
-  char byte2;
-  char byte3;
-  char byte4;
-  cout << "Adressa pc-a" << hex << address << endl
-       << endl;
-  byte1 = memory[address] & 0xFFFF;
-  cout << "byte1: " << byte1 << " ";
-  byte2 = memory[++address] & 0xFFFF ;
-  cout << "byte2: " << byte2 << " ";
-  byte3 = memory[++address] & 0xFFFF ;
-  cout << "byte3: " << byte3 << " ";
-  byte4 = memory[++address] & 0xFFFF;
-  cout << "byte4: " << byte4 << endl;
-  cout << hex << (byte4 << 32) << " " << hex << (byte3 << 16) << " " <<hex << ((char)(byte2 << 8))<< " " << hex << (byte1 & 0xff)<< endl;
-  ret = (long)((char)(byte4 << 32) | (char)(byte3 << 16) | (char)(byte2 << 8) | (char)(byte1 & 0xff));
+  unsigned char byte1;
+  unsigned char byte2;
+  unsigned char byte3;
+  unsigned char byte4;
+  byte1 = (unsigned char)(memory[address] & 0xFFFF);
+  byte2 = (unsigned char)(memory[address+1] & 0xFFFF) ;
+  byte3 = (unsigned char)(memory[address+2] & 0xFFFF);
+  byte4 = (unsigned char)(memory[address+3] & 0xFFFF);
+  ret = (long)(((byte1 &0xFFFF) << 24) | ((byte2 &0xFFFF) << 16) | ((byte3 & 0xFFFF) << 8) | (byte4 &0xFFFF));
   return ret;
 }

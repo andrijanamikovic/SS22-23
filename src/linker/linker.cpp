@@ -729,7 +729,7 @@ int Linker::resolve_relocations()
     current_section.data[offset] = ((char)(0xff & value));
     current_section.data[offset + 1] = ((char)(0xff & value >> 8));
     current_section.data[offset + 2] = ((char)(0xff & value >> 16));
-    current_section.data[offset + 3] = ((char)(0xff & value >> 32)); //+ ili -?
+    current_section.data[offset + 3] = ((char)(0xff & value >> 24)); //+ ili -?
     this->linker_combined_file << "Relokacija: " << it->name << " u sekciji: " << it->section_name << " na offsetu: " << offset << " sa vrednosti: " << value << endl;
     // if ((!current.local && !current.extern_sym) || current.type == "SCTN")
     // {
@@ -740,7 +740,7 @@ int Linker::resolve_relocations()
     //   // current_section.data[current_reloc.offset] = ((char)(value)); //ovo mi ne radi mislim nmg pristupim ovom offsetu
     //   // current_section.data[current_reloc.offset - 1] = ((char)(value >> 8));
     //   // current_section.data[current_reloc.offset - 2] = ((char)(value >> 16));
-    //   // current_section.data[current_reloc.offset - 3] = ((char)(value >> 32));
+    //   // current_section.data[current_reloc.offset - 3] = ((char)(value >> 24));
     //   current_reloc.offset += current_section.address;
     // }
     // else
@@ -804,7 +804,7 @@ void Linker::make_hex_file()
       {
         *hex_help << std::setfill('0') << std::setw(8) << hex << (0xFFFFFFFF & i) << ": ";
       }
-      *hex_help << setfill('0') << std::setw(5) << " ";
+      *hex_help << setfill('0') << std::setw(3) << " ";
       i++;
     }
     for (unsigned char c : current_Section.data)
@@ -815,7 +815,7 @@ void Linker::make_hex_file()
       }
 
       hex_file->write((char *)&c, sizeof(c));
-      *hex_help << setfill('0') << std::setw(4) << hex << (0xFFFF & c) << " ";
+      *hex_help << setfill('0') << std::setw(2) << hex << (0xFFFF & c) << " ";
       if (++i % 16 == 0)
       {
         *hex_help << endl;
@@ -854,7 +854,7 @@ int Linker::resolve_relocations_relocatable()
     output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset] = (0xFF & value);
     output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 1] = (0xFF & (value >> 8));
     output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 2] = (0xFF & (value >> 16));
-    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 3] = (0xFF & (value >> 32));
+    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 3] = (0xFF & (value >> 24));
   }
   return ret;
 }
