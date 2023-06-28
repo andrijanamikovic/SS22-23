@@ -187,13 +187,14 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
     LiteralPoolTable &second = it.second;
     if (!second.stored)
     {
-      current_section_node->data.push_back((char)(second.name));
-      current_section_node->data.push_back((char)(second.name >> 8));
-      current_section_node->data.push_back((char)(second.name >> 16));
       current_section_node->data.push_back((char)(second.name >> 24));
+      current_section_node->data.push_back((char)(second.name >> 16));
+      current_section_node->data.push_back((char)(second.name >> 8));
+      current_section_node->data.push_back((char)(second.name));
+
       if (!second.defined)
       {
-        second.offset = location_counter - 4;
+        second.offset = location_counter;// - 4; // - 4;
         second.defined = true;
       }
       if (second.symbol)
@@ -204,9 +205,9 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
           // cout << "Lokal symbol: " << current_symbol.name << " In section: " << current_symbol.section_name << " a trenutno je " << current_section << endl;
           RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.section_id, current_symbol.section_name, current_section);
           relocation_data->type = "R_X86_64_PC32";
-          relocation_data->addend = 0; // second.offset; dodovicu je 0 
+          relocation_data->addend = 0; // second.offset; dodovicu je 0
           relocation_data->local = true;
-          relocation_data->offset = location_counter + 4;
+          relocation_data->offset = location_counter + 4; // + 4;
           if (current_symbol.type == "SCTN")
             relocation_data->section = true;
           relocations.push_back(*relocation_data);
@@ -217,7 +218,7 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
           relocation_data->type = "R_X86_64_PC32";
           relocation_data->addend = 0;
           relocation_data->local = false;
-          relocation_data->offset = location_counter + 4;
+          relocation_data->offset = location_counter + 4; // + 4;
           if (current_symbol.type == "SCTN")
             relocation_data->section = true;
           relocations.push_back(*relocation_data);
@@ -241,7 +242,7 @@ void Assembler::calculatePoolData(string current_section, SectionTableNode *curr
     LiteralPoolTable &second = it.second;
     if (!second.defined)
     {
-      second.offset = location_counter - 4;
+      second.offset = location_counter; //-4
       second.defined = true;
     }
     location_counter += 4;
@@ -452,7 +453,8 @@ int Assembler::process_label(string label)
     {
       if (it->name == label && it->local == false)
       {
-        cout << "Jesi usao ovde za nesto da prepravis leba ti" << endl << endl;
+        cout << "Jesi usao ovde za nesto da prepravis leba ti" << endl
+             << endl;
         it->local = true;
         it->name = it->section_name;
         // it->addend = location_counter;
@@ -708,7 +710,7 @@ void Assembler::printSymbolTable()
   this->assembler_help_file << "Symbol_id Symbol_name  Section_id Section_name defined local extern value" << endl;
   for (auto it = symbols.cbegin(); it != symbols.end(); ++it)
   {
-    this->assembler_help_file << it->second.symbol_id << " " << it->first << " " << it->second.section_id << "  " << it->second.section_name << "  " << it->second.defined << " " << it->second.local << "  " << it->second.extern_sym << " " << it->second.value<< endl;
+    this->assembler_help_file << it->second.symbol_id << " " << it->first << " " << it->second.section_id << "  " << it->second.section_name << "  " << it->second.defined << " " << it->second.local << "  " << it->second.extern_sym << " " << it->second.value << endl;
   }
 }
 
@@ -719,7 +721,7 @@ void Assembler::printRelocationTable()
   this->assembler_help_file << "Relocation_id Symbol_name  type addend offset" << endl;
   for (auto it = relocations.cbegin(); it != relocations.end(); ++it)
   {
-    this->assembler_help_file << it->relocation_id << " " << it->name << " " << it->type << "  " << hex << it->addend  << " " << hex << it->offset << endl;
+    this->assembler_help_file << it->relocation_id << " " << it->name << " " << it->type << "  " << hex << it->addend << " " << hex << it->offset << endl;
   }
 }
 
@@ -952,22 +954,23 @@ int Assembler::word_dir_second(smatch match)
         {
           // pogledam vrednost iz tabele i metnem u fajl
           assembler_help_file << "Word with symbol value: " << symbol.value << " location_counter : " << location_counter << endl;
-          sectionNode.data.push_back((int)(symbol.value & 0xFFFF));
           sectionNode.data.push_back((int)((symbol.value >> 16) & 0xFFFF));
+          sectionNode.data.push_back((int)(symbol.value & 0xFFFF));
           //
           RelocationTableNode *relocation_data = new RelocationTableNode(symbol.section_id, symbol.section_name, current_section);
           relocation_data->local = true;
           relocation_data->type = "R_X86_64_32";
-          relocation_data->addend = 0; //location_counter; dodovic 0
+          relocation_data->addend = 0; // location_counter; dodovic 0
           relocation_data->offset = location_counter;
           relocations.push_back(*relocation_data);
           // relocation_data->offset = location_counter;
         }
         else
         {
-          char temp = (int)(0 & 0xFFFF);
+
+          char temp = (int)((0 >> 16) & 0xFFFF);
           sectionNode.data.push_back(temp);
-          temp = (int)((0 >> 16) & 0xFFFF);
+          temp = (int)(0 & 0xFFFF);
           sectionNode.data.push_back(temp);
 
           symbol.value = current_line;
@@ -991,9 +994,10 @@ int Assembler::word_dir_second(smatch match)
     else
     {
       // ako je broj bacim allocate za toliki prostor samo
-      int dataInt = getLiteralValue(s) & 0xFFFFFFFF;
+
+      int dataInt = (getLiteralValue(s) >> 16) & 0xFFFF0000;
       sectionNode.data.push_back((int)dataInt);
-      dataInt = (getLiteralValue(s) >> 16) & 0xFFFF0000;
+      dataInt = getLiteralValue(s) & 0xFFFFFFFF;
       sectionNode.data.push_back((int)dataInt);
       assembler_help_file << "Word directive with number: " << s << "location_counter"
                           << " : " << location_counter << endl;
@@ -1288,10 +1292,12 @@ void Assembler::process_literal_first(string operand, string current_section)
         literal->symbol = true;
         current.insert({operand, *literal});
       }
-    } else {
+    }
+    else
+    {
       SymbolTableNode *symbol = new SymbolTableNode(++this->_symbol_id, 0, false, false, false);
       LiteralPoolTable *literal = new LiteralPoolTable(symbol->value, symbol->value);
-      symbol->used = true; 
+      symbol->used = true;
       symbol->value = location_counter;
       literal->symbol = true;
       current.insert({operand, *literal});
@@ -2808,22 +2814,24 @@ void Assembler::outputTables()
   this->printRelocationTable();
 }
 
-void Assembler::convert_to_little_endian(vector<char> *data){
-  if (data->size() % 4 != 0) {
+void Assembler::convert_to_little_endian(vector<char> *data)
+{
+  if (data->size() % 4 != 0)
+  {
     return;
   }
   int i = 0;
   int size = data->size();
   cout << "Velcin: " << size << endl;
   auto begin = data->begin();
-  while (i < size){
+  while (i < size)
+  {
     auto start = next(begin, i);
-    auto end = next(begin, i+4);
+    auto end = next(begin, i + 4);
     reverse(start, end);
-    i = i +4;
+    i = i + 4;
   }
   size = data->size();
   cout << "Izasao iz while " << size << endl;
   return;
 }
-

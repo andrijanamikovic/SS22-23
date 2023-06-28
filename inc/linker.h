@@ -48,6 +48,7 @@ class Linker {
     void printRelocationTableLinker();
     void printSectionTableLinker();
     void printSectionTableInFile();
+    void convert_to_bigendian(vector<char> *data);
 
     ifstream input_data;
     ofstream output_linker;

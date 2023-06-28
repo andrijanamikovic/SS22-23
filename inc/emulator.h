@@ -7,6 +7,7 @@
 #include <fstream>
 #include <termios.h>
 #include <vector>
+#include "tables.h"
 
 //Za B nivo imam i terminal
 
@@ -44,10 +45,7 @@ enum Registers {
   r14 = 14,
   r15 = 15,
   pc = r15,
-  sp = r14,
-  status,
-  handler,
-  cause
+  sp = r14
 };
 
 enum FlagsStatus {
@@ -92,14 +90,20 @@ private:
   vector<Segment> segments;
   vector<char> memory;
   bool running;
-  int reg[16]; // long?
+  long reg[16]; 
+  int status;
+  int handler;
+  int cause;
+  long temp;
   int load_data_for_emulator();
   int load_to_memory();
   long read_instruction();
-  int execute();
+  int execute(long opcode);
   int interrupt();
   void print_register_output();
-  long read_dword(int address);
+  long read_dword(long address);
+  int store_dword(long address, long value);
+  int get_reg_num(unsigned char reg);
 };
 
 #endif

@@ -147,11 +147,16 @@ int Linker::load_data_for_linker(string file)
     for (int i = 0; i < current_size; i++)
     {
       // cout << "Data? " << endl;
-      input_data.read((char *)&data, sizeof(char)); // section data
+      input_data.read((char *)&data, sizeof(data)); // section data
       current_section->data.push_back(data);
+      this->linker_help_file << setfill('0') << std::setw(2) << hex << (0xFF & data) << " ";
       // cout << data;
     }
-
+    vector<char> data_vector;
+    data_vector = current_section->data;
+    convert_to_bigendian(&data_vector);
+    current_section->data.clear();
+    current_section->data = data_vector;
     file_sections.insert({current_section->name, *current_section});
   }
 
@@ -705,7 +710,7 @@ int Linker::resolve_relocations()
     else
     {
       // section
-      value = sections.find(it->filename)->second.find(it->name)->second.address;
+      value = sections.find(it->filename)->second.find(it->section_name)->second.address;
       this->linker_help_file << " section + " << value << endl;
     }
     SymbolTableNode current = output_symbols.at(it->name);
@@ -726,10 +731,10 @@ int Linker::resolve_relocations()
       return -1;
     }
     value += it->addend;
-    current_section.data[offset] = ((char)(0xff & value));
-    current_section.data[offset + 1] = ((char)(0xff & value >> 8));
-    current_section.data[offset + 2] = ((char)(0xff & value >> 16));
-    current_section.data[offset + 3] = ((char)(0xff & value >> 24)); //+ ili -?
+    current_section.data[offset + 3] = ((char)(0xff & value));
+    current_section.data[offset + 2] = ((char)(0xff & value >> 8));
+    current_section.data[offset + 1] = ((char)(0xff & value >> 16));
+    current_section.data[offset] = ((char)(0xff & value >> 24)); //+ ili -?
     this->linker_combined_file << "Relokacija: " << it->name << " u sekciji: " << it->section_name << " na offsetu: " << offset << " sa vrednosti: " << value << endl;
     // if ((!current.local && !current.extern_sym) || current.type == "SCTN")
     // {
@@ -814,7 +819,7 @@ void Linker::make_hex_file()
         *hex_help << std::setfill('0') << std::setw(8) << hex << (0xFFFFFFFF & i) << ": ";
       }
 
-      hex_file->write((char *)&c, sizeof(c));
+      hex_file->write((char *)&c, sizeof(char));
       *hex_help << setfill('0') << std::setw(2) << hex << (0xFFFF & c) << " ";
       if (++i % 16 == 0)
       {
@@ -851,10 +856,10 @@ int Linker::resolve_relocations_relocatable()
     value += new_value;
     // cout << "Hoce da upise novu vrednost: " << value << " za relokaciju: " << current_relocation.name << " from data added: " << new_value << " on offset: " <<  hex <<current_relocation.offset << endl;
 
-    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset] = (0xFF & value);
-    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 1] = (0xFF & (value >> 8));
-    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 2] = (0xFF & (value >> 16));
-    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 3] = (0xFF & (value >> 24));
+    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 3] = (0xFF & value);
+    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 2] = (0xFF & (value >> 8));
+    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 1] = (0xFF & (value >> 16));
+    output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset] = (0xFF & (value >> 24));
   }
   return ret;
 }
@@ -939,4 +944,23 @@ void Linker::make_relocatable_file()
   }
   reloc_file->close();
   reloc_help->close();
+}
+
+void Linker::convert_to_bigendian(vector<char> *data)
+{
+  if (data->size() % 4 != 0)
+  {
+    return;
+  }
+  int i = 0;
+  int size = data->size();
+  auto begin = data->begin();
+  while (i < size)
+  {
+    auto start = next(begin, i);
+    auto end = next(begin, i + 4);
+    reverse(start, end);
+    i = i + 4;
+  }
+  return;
 }
