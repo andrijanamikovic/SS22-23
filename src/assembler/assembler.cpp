@@ -174,6 +174,8 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
     return;
   }
   poolData &data = pool.at(current_section);
+  if (data.size() == 0) 
+    return;
   int literalVal = data.size() * 4;
   cout << "Velicina bazena: " << data.size();
   cout << "End of section save the pool " << endl;
@@ -187,6 +189,7 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
     LiteralPoolTable &second = it.second;
     if (!second.stored)
     {
+      cout << endl << endl << "Udjes li ovde?" << hex << second.name << "sa offseetom:" << hex << second.offset << endl;
       current_section_node->data.push_back((char)(second.name >> 24));
       current_section_node->data.push_back((char)(second.name >> 16));
       current_section_node->data.push_back((char)(second.name >> 8));
@@ -202,23 +205,24 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
         SymbolTableNode &current_symbol = symbols.at(it.first);
         if (current_symbol.local)
         {
-          // cout << "Lokal symbol: " << current_symbol.name << " In section: " << current_symbol.section_name << " a trenutno je " << current_section << endl;
+          cout << "Lokal symbol: " << current_symbol.name << " In section: " << current_symbol.section_name << " a trenutno je " << current_section << endl;
           RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.section_id, current_symbol.section_name, current_section);
           relocation_data->type = "R_X86_64_PC32";
-          relocation_data->addend = 0; // second.offset; dodovicu je 0
+          relocation_data->addend = current_symbol.value;//0; // second.offset; dodovicu je 0
           relocation_data->local = true;
-          relocation_data->offset = location_counter + 4; // + 4;
+          relocation_data->offset = location_counter; 
           if (current_symbol.type == "SCTN")
             relocation_data->section = true;
           relocations.push_back(*relocation_data);
         }
         else
         {
+                cout << "Globalni symbol: " << current_symbol.name << " In section: " << current_symbol.section_name << " a trenutno je " << current_section << endl;
           RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.symbol_id, current_symbol.name, current_section);
           relocation_data->type = "R_X86_64_PC32";
           relocation_data->addend = 0;
           relocation_data->local = false;
-          relocation_data->offset = location_counter + 4; // + 4;
+          relocation_data->offset = location_counter; 
           if (current_symbol.type == "SCTN")
             relocation_data->section = true;
           relocations.push_back(*relocation_data);
@@ -237,12 +241,17 @@ void Assembler::calculatePoolData(string current_section, SectionTableNode *curr
     return;
   }
   poolData &data = pool.at(current_section);
+  if (data.size() == 0)
+    return;
+  //jmp
+  location_counter += 4;
+  current_section_node->size += 4;
   for (auto &it : data)
   {
     LiteralPoolTable &second = it.second;
     if (!second.defined)
     {
-      second.offset = location_counter; //-4
+      second.offset = location_counter;// - 4;
       second.defined = true;
     }
     location_counter += 4;
@@ -425,43 +434,43 @@ int Assembler::process_label(string label)
              << "Error at line: " << this->current_line << endl;
         return -1;
       }
+      cout << "Zasto nisi definisao? " << symbol.name << endl;
       symbol.defined = true;
-      // symbol.local = true;
       symbol.value = location_counter;
       symbol.section_id = this->_section_id;
       symbol.section_name = this->current_section;
       symbol.name = label;
-      poolData &current_pool = pool.at(current_section);
-      if (symbol.used)
-      {
-        if (current_pool.find(label) == current_pool.end())
-        {
-          LiteralPoolTable *literal = new LiteralPoolTable(symbol.value, location_counter);
-          literal->symbol = true;
-          current_pool.insert({label, *literal});
-        }
-        else
-        {
-          LiteralPoolTable &literal = current_pool.at(label);
-          literal.symbol = true;
-          literal.offset = location_counter;
-        }
-      }
+      // poolData &current_pool = pool.at(current_section);
+      // if (symbol.used)
+      // {
+      //   if (current_pool.find(label) == current_pool.end())
+      //   {
+      //     LiteralPoolTable *literal = new LiteralPoolTable(symbol.value, location_counter);
+      //     literal->symbol = true;
+      //     current_pool.insert({label, *literal});
+      //   }
+      //   else
+      //   {
+      //     LiteralPoolTable &literal = current_pool.at(label);
+      //     literal.symbol = true;
+      //     literal.offset = location_counter;
+      //   }
+      // }
     }
     cout << "Vec postoji simbol labela: " << endl;
-    for (auto it = relocations.begin(); it != relocations.end(); ++it)
-    {
-      if (it->name == label && it->local == false)
-      {
-        cout << "Jesi usao ovde za nesto da prepravis leba ti" << endl
-             << endl;
-        it->local = true;
-        it->name = it->section_name;
-        // it->addend = location_counter;
-        it->offset = location_counter;
-        break;
-      }
-    }
+    // for (auto it = relocations.begin(); it != relocations.end(); ++it)
+    // {
+    //   if (it->name == label && it->local == false)
+    //   {
+    //     cout << "Jesi usao ovde za nesto da prepravis leba ti" << endl
+    //          << endl;
+    //     it->local = true;
+    //     it->name = it->section_name;
+    //     // it->addend = location_counter;
+    //     it->offset = location_counter;
+    //     break;
+    //   }
+    // }
   }
   return 0;
 }
@@ -718,10 +727,10 @@ void Assembler::printRelocationTable()
 {
   this->assembler_help_file << endl
                             << "Relocation table" << endl;
-  this->assembler_help_file << "Relocation_id Symbol_name  type addend offset" << endl;
+  this->assembler_help_file << "Relocation_id Symbol_name  type addend offset section_name" << endl;
   for (auto it = relocations.cbegin(); it != relocations.end(); ++it)
   {
-    this->assembler_help_file << it->relocation_id << " " << it->name << " " << it->type << "  " << hex << it->addend << " " << hex << it->offset << endl;
+    this->assembler_help_file << it->relocation_id << " " << it->name << " " << it->type << "  " << hex << it->addend << " " << hex << it->offset << " " << it->section_name << endl;
   }
 }
 
@@ -752,7 +761,7 @@ void Assembler::printLiteralPool()
     this->assembler_help_file << "key name  offset  used" << endl;
     for (auto c : it->second)
     {
-      assembler_help_file << c.first << " " << c.second.name << " " << c.second.offset << " " << c.second.defined << endl;
+      assembler_help_file << c.first << " " << hex << c.second.name << " " << hex << c.second.offset << " " << c.second.defined << endl;
     }
     assembler_help_file << endl;
   }
@@ -907,7 +916,8 @@ int Assembler::section_dir_second(smatch match)
   string section_name = section_label.substr(section_label.find(" ") + 1, section_label.size());
   section_label = section_label.substr(0, section_label.find(" "));
   SectionTableNode &current_section_node = sections.at(this->current_section);
-  savePoolData(this->current_section, &current_section_node);
+  if (current_section != "UND")
+    savePoolData(this->current_section, &current_section_node);
   this->current_section = section_name;
   this->location_counter = 0;
   this->pool_distance = 0;
@@ -960,7 +970,7 @@ int Assembler::word_dir_second(smatch match)
           RelocationTableNode *relocation_data = new RelocationTableNode(symbol.section_id, symbol.section_name, current_section);
           relocation_data->local = true;
           relocation_data->type = "R_X86_64_32";
-          relocation_data->addend = 0; // location_counter; dodovic 0
+          relocation_data->addend = symbol.value; //0; // location_counter; dodovic 0
           relocation_data->offset = location_counter;
           relocations.push_back(*relocation_data);
           // relocation_data->offset = location_counter;
@@ -973,7 +983,7 @@ int Assembler::word_dir_second(smatch match)
           temp = (int)(0 & 0xFFFF);
           sectionNode.data.push_back(temp);
 
-          symbol.value = current_line;
+          symbol.value = location_counter;//current_line;
           symbol.section_id = current_section_id;
           symbol.section_name = current_section;
           symbol.name = current_section;
@@ -1290,6 +1300,7 @@ void Assembler::process_literal_first(string operand, string current_section)
         LiteralPoolTable *literal = new LiteralPoolTable(symbol.value, symbol.value);
         symbol.used = true;
         literal->symbol = true;
+        symbol.section_name = current_section;
         current.insert({operand, *literal});
       }
     }
@@ -1299,6 +1310,7 @@ void Assembler::process_literal_first(string operand, string current_section)
       LiteralPoolTable *literal = new LiteralPoolTable(symbol->value, symbol->value);
       symbol->used = true;
       symbol->value = location_counter;
+      symbol->section_name = current_section;
       literal->symbol = true;
       current.insert({operand, *literal});
     }
@@ -1352,6 +1364,8 @@ int Assembler::call_inst_second(smatch match)
         poolData &current_pool = pool.at(current_section);
         LiteralPoolTable &literal = current_pool.at(operand);
         int disp = literal.offset - location_counter;
+        cout << "Za: " << operand << endl;
+        cout << "Ugradio disp: " << hex << disp << " ? " << endl;
         sectionNode.data.push_back((char)(0x21));
         sectionNode.data.push_back((char)0xF0);
         sectionNode.data.push_back((char)((0 << 4) | ((disp >> 8) & 0x0F)));

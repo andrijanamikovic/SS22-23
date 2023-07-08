@@ -466,6 +466,7 @@ int Linker::map_symbol_table()
     SectionTableNode &current = output_sections.at(it->first);
     SymbolTableNode *symbol = new SymbolTableNode(++_symbol_id, current.section_id, true, true, false);
     symbol->value = current.address;
+    cout << endl <<"Sta je sa adresom: " << symbol->value << endl;
     symbol->type = "SCTN";
     output_symbols.insert({current.name, *symbol});
   }
@@ -479,7 +480,11 @@ int Linker::map_symbol_table()
       if (it->second.extern_sym)
       {
         if (output_symbols.find(it->first) != output_symbols.end())
+        {
+          output_symbols.at(it->first).extern_sym = true;
           continue;
+        }
+
         if (extern_symbols.find(it->first) == extern_symbols.end() && output_symbols.find(it->first) == output_symbols.end())
         {
           extern_symbols.insert({it->first, it->second});
@@ -503,11 +508,14 @@ int Linker::map_symbol_table()
           symbol->value = offset;
           it->second.value = offset;
           symbol->type = it->second.type;
+          symbol->defined = it->second.defined;
+          symbol->local = it->second.local;
+          symbol->extern_sym = it->second.extern_sym;
           symbol->section_name = it->second.section_name;
           output_symbols.insert({it->first, *symbol});
         }
       }
-      else if (it->second.local)
+      else if (it->second.local && it->second.type != "SCTN")
       {
         unordered_map<string, SectionTableNode> &file_section_table = sections.at(file);
         SymbolTableNode *symbol = new SymbolTableNode(++_symbol_id, it->second.section_id, it->second.local, it->second.defined, it->second.extern_sym);
@@ -515,11 +523,19 @@ int Linker::map_symbol_table()
         {
           SectionTableNode &current_section = file_section_table.at(it->second.section_name);
           long offset = it->second.value + current_section.address; // - output_sections.at(it->second.section_name).address;
-          it->second.value = offset;
           symbol->value = offset;
           symbol->section_name = it->second.section_name;
         }
         symbol->type = it->second.type;
+        symbol->defined = it->second.defined;
+        symbol->local = it->second.local;
+        symbol->extern_sym = it->second.extern_sym;
+        if (output_symbols.find(it->first) != output_symbols.end())
+        {
+          cout << "Obrisan globalni simbol: "
+               << "dodat lokalni: " << it->second.name << " " << it->second.value << endl;
+          output_symbols.erase(it->first);
+        }
         output_symbols.insert({it->first, *symbol});
       }
     }
@@ -528,6 +544,7 @@ int Linker::map_symbol_table()
   {
     if (output_symbols.find(it->first) != output_symbols.end())
     {
+      output_symbols.at(it->first).extern_sym = true;
       continue;
     }
     if (it->second.section_id == 0)
@@ -554,20 +571,17 @@ int Linker::map_relocation_table()
       SymbolTableNode current_sym = current_symbols_table.at(it->name);
       RelocationTableNode *new_relloc = new RelocationTableNode();
       SymbolTableNode global_sym;
-      if (it->local)
-      {
-        global_sym = output_symbols.at(it->section_name);
-      }
-      else
-      {
-        global_sym = output_symbols.at(it->name);
-      }
+      global_sym = output_symbols.at(it->name);
       new_relloc->relocation_id = global_sym.symbol_id;
       new_relloc->section_name = it->section_name;
       new_relloc->name = it->name;
       new_relloc->type = it->type;
       new_relloc->filename = file;
       new_relloc->addend = it->addend;
+      if (global_sym.type == "SCTN")
+      {
+        new_relloc->addend += current_section_table.at(it->name).address - output_sections.at(it->name).address;
+      }
       new_relloc->local = it->local;
       new_relloc->offset = it->offset + current_section_table.at(it->section_name).address - output_sections.at(it->section_name).address;
       output_relocations.push_back(*new_relloc);
@@ -710,7 +724,7 @@ int Linker::resolve_relocations()
     else
     {
       // section
-      value = sections.find(it->filename)->second.find(it->section_name)->second.address;
+      value = sections.find(it->filename)->second.find(it->name)->second.address;
       this->linker_help_file << " section + " << value << endl;
     }
     SymbolTableNode current = output_symbols.at(it->name);
@@ -719,11 +733,14 @@ int Linker::resolve_relocations()
     {
       offset = it->offset;
       offset += sections.at(it->filename).at(it->section_name).address - output_sections.at(it->section_name).address;
+      cout << endl
+           << "Za simbol: " << it->name << " u sekciji: " << it->section_name << "offset je: " << offset << endl
+           << endl;
     }
     else if (it->type == "R_X86_64_32")
     {
       offset = it->offset;
-      value = current.value + it->addend;
+      value = current.value; // + it->addend;
     }
     else
     {
@@ -735,7 +752,7 @@ int Linker::resolve_relocations()
     current_section.data[offset + 2] = ((char)(0xff & value >> 8));
     current_section.data[offset + 1] = ((char)(0xff & value >> 16));
     current_section.data[offset] = ((char)(0xff & value >> 24)); //+ ili -?
-    this->linker_combined_file << "Relokacija: " << it->name << " u sekciji: " << it->section_name << " na offsetu: " << offset << " sa vrednosti: " << value << endl;
+    this->linker_combined_file << "Relokacija: " << it->name << " u sekciji: " << it->section_name << " na offsetu: " << sections.at(it->filename).at(it->section_name).address + offset  << " sa vrednosti: " << value << endl;
     // if ((!current.local && !current.extern_sym) || current.type == "SCTN")
     // {
     //   current_reloc.addend += current.value;

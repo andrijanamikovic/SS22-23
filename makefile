@@ -56,11 +56,17 @@ LD3: linker.o
 	-relocatable \
 	-o program.hex main.o handler.o math.o isr_terminal.o isr_timer.o isr_software.o
 
+LD4: linker.o
+	./linker -hex  -place=my_data@0x40000000 -place=my_code@0xF0000000 -o programtest.hex test.o
+
 linker.o:	$(LINKER_DIR)/main.cpp $(LINKER_DIR)/linker.cpp $(ASSEMBLER_DIR)/tables.cpp
 	g++ -g -o linker  $(LINKER_DIR)/main.cpp $(LINKER_DIR)/linker.cpp $(ASSEMBLER_DIR)/tables.cpp
 
 EM: emulator.exe
 	./emulator program.hex
+
+EM4: emulator.exe
+	./emulator programtest.hex
 
 emulator.exe: $(EMULATOR_DIR)/main.cpp $(EMULATOR_DIR)/emulator.cpp $(ASSEMBLER_DIR)/tables.cpp
 	g++ -g -o emulator $(EMULATOR_DIR)/main.cpp $(EMULATOR_DIR)/emulator.cpp $(ASSEMBLER_DIR)/tables.cpp
