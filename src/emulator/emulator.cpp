@@ -186,9 +186,9 @@ int Emulator::read_instruction()
   int opcode;
   opcode = read_dword(reg[pc]);
   cout << "PC: " << hex << reg[pc] << endl;
-  this->print_register_output();
-  reg[pc] += 4;
+  // this->print_register_output();
   execute(opcode);
+  reg[pc] += 4;
   return ret;
 }
 
@@ -250,14 +250,14 @@ int Emulator::execute(int opcode)
     this->emulator_help_file << "add " << regA << " = " << regB << " + " << regC << endl;
     if (regA != 0)
       reg[regA] = reg[regB] - reg[regC];
-    cout << "ADD" << endl;
+    // cout << "ADD" << endl;
     break;
   case SUB:
     // regA <= regB - regC
     this->emulator_help_file << "sub " << regA << " = " << regB << " - " << regC << endl;
     if (regA != 0)
       reg[regA] = reg[regB] - reg[regC];
-    cout << "SUB" << endl;
+    // cout << "SUB" << endl;
     break;
   case MUL:
     // regA <= regB * regC
@@ -322,7 +322,7 @@ int Emulator::execute(int opcode)
     reg[sp] = reg[sp] - 4;
     store_dword(reg[sp], reg[pc]);
     address = reg[regA] + reg[regB] + disp;
-    cout << "ovde mi disp brate: " << hex << disp << "pc mi je: " << hex << reg[regA] << " a ovaj drugi " << hex << reg[regB] << endl;
+    // cout << "ovde mi disp brate: " << hex << disp << "pc mi je: " << hex << reg[regA] << " a ovaj drugi " << hex << reg[regB] << endl;
     address = address & 0xFFFFFFFF;
     cout << hex << address << endl;
     val = read_dword(address) & 0xFFFFFFFF;
@@ -449,7 +449,7 @@ int Emulator::execute(int opcode)
     // push pc;
     reg[sp] = reg[sp] - 4;
     store_dword(reg[sp], reg[pc]);
-    emulator_help_file << "Error" << endl;
+    // emulator_help_file << "Error" << endl;
     cause = 1;
     return 1;
     break;
@@ -465,6 +465,7 @@ int Emulator::interrupt()
 {
   int ret = 0;
   cout << "Poziv prekidne rutine: " << endl;
+  //Ovo treba da vidim kako meni izgleda ... 
   return ret;
 }
 

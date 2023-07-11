@@ -137,6 +137,7 @@ void Assembler::mem_operand(string operands, string *operand, string *reg, strin
     {
       string operand = match.str(0);
       process_literal_first(operand, current_section);
+      location_counter += 4;
     }
     break;
   }
@@ -1345,7 +1346,7 @@ int Assembler::call_inst_second(smatch match)
     if (current_pool.find(operand) != current_pool.end())
     {
       LiteralPoolTable &literal_current = current_pool.at(operand);
-      int disp = literal_current.offset - location_counter - 4;
+      int disp = literal_current.offset - location_counter;// - 4;
       sectionNode.data.push_back((char)(0x21));
       sectionNode.data.push_back((char)0xF0);
       sectionNode.data.push_back((char)((0 << 4) | ((disp >> 8) & 0x0F)));
@@ -1364,7 +1365,7 @@ int Assembler::call_inst_second(smatch match)
       int val = symbol.value;
       poolData &current_pool = pool.at(current_section);
       LiteralPoolTable &literal = current_pool.at(operand);
-      int disp = literal.offset - location_counter - 4;
+      int disp = literal.offset - location_counter;// - 4;
       cout << "Za: " << operand << endl;
       cout << "Ugradio disp: " << hex << disp << " ? " << endl;
       sectionNode.data.push_back((char)(0x21));
@@ -1450,7 +1451,7 @@ int Assembler::jmp_inst_second(smatch match)
     if (current_pool.find(operand) != current_pool.end())
     {
       LiteralPoolTable &literal_current = current_pool.at(operand);
-      int disp = literal_current.offset - location_counter - 4;
+      int disp = literal_current.offset - location_counter;// - 4;
       sectionNode.data.push_back((char)(0x38));
       sectionNode.data.push_back((char)0xF0);
       sectionNode.data.push_back((char)((0 << 4) | ((disp >> 8) & 0x0F)));
@@ -1468,7 +1469,7 @@ int Assembler::jmp_inst_second(smatch match)
       int val = symbols.at(operand).value;
       poolData &current_pool = pool.at(current_section);
       LiteralPoolTable &literal = current_pool.at(operand);
-      int disp = literal.offset - location_counter - 4;
+      int disp = literal.offset - location_counter;// - 4;
       sectionNode.data.push_back((char)(0x38));
       sectionNode.data.push_back((char)0xF0);
       sectionNode.data.push_back((char)((0 << 4) | ((disp >> 8) & 0x0F)));
@@ -1533,7 +1534,7 @@ int Assembler::beq_inst_second(smatch match)
     if (current_pool.find(operand) != current_pool.end())
     {
       LiteralPoolTable &literal_current = current_pool.at(operand);
-      int disp = literal_current.offset - location_counter - 4;
+      int disp = literal_current.offset - location_counter;// - 4;
       sectionNode.data.push_back((char)(0x39));
       sectionNode.data.push_back((char)(0xF << 4) | val1);
       sectionNode.data.push_back((char)((val2 << 4) | ((disp >> 8) & 0x0F)));
@@ -1551,7 +1552,7 @@ int Assembler::beq_inst_second(smatch match)
       int val = symbols.at(operand).value;
       poolData &current_pool = pool.at(current_section);
       LiteralPoolTable &literal = current_pool.at(operand);
-      int disp = literal.offset - location_counter - 4;
+      int disp = literal.offset - location_counter;// - 4;
       sectionNode.data.push_back((char)(0x39));
       sectionNode.data.push_back((char)(0xF << 4) | val1);
       sectionNode.data.push_back((char)((val2 << 4) | ((disp >> 8) & 0x0F)));
@@ -1604,7 +1605,7 @@ int Assembler::bne_inst_second(smatch match)
     if (current_pool.find(operand) != current_pool.end())
     {
       LiteralPoolTable &literal_current = current_pool.at(operand);
-      int disp = literal_current.offset - location_counter - 4;
+      int disp = literal_current.offset - location_counter;// - 4;
       sectionNode.data.push_back((char)(0x3A));
       sectionNode.data.push_back((char)(0xF << 4) | val1);
       sectionNode.data.push_back((char)((val2 << 4) | ((disp >> 8) & 0x0F)));
@@ -1622,7 +1623,7 @@ int Assembler::bne_inst_second(smatch match)
       int val = symbols.at(operand).value;
       poolData &current_pool = pool.at(current_section);
       LiteralPoolTable &literal = current_pool.at(operand);
-      int disp = literal.offset - location_counter - 4;
+      int disp = literal.offset - location_counter;// - 4;
       sectionNode.data.push_back((char)(0x3A));
       sectionNode.data.push_back((char)(0xF << 4) | val1);
       sectionNode.data.push_back((char)((val2 << 4) | ((disp >> 8) & 0x0F)));
@@ -1675,7 +1676,7 @@ int Assembler::bgt_inst_second(smatch match)
     if (current_pool.find(operand) != current_pool.end())
     {
       LiteralPoolTable &literal_current = current_pool.at(operand);
-      int disp = literal_current.offset - location_counter - 4;
+      int disp = literal_current.offset - location_counter;// - 4;
       sectionNode.data.push_back((char)(0x3B));
       sectionNode.data.push_back((char)(0xF << 4) | val1);
       sectionNode.data.push_back((char)((val2 << 4) | ((disp >> 8) & 0x0F)));
@@ -1693,7 +1694,7 @@ int Assembler::bgt_inst_second(smatch match)
       int val = symbols.at(operand).value;
       poolData &current_pool = pool.at(current_section);
       LiteralPoolTable &literal = current_pool.at(operand);
-      int disp = literal.offset - location_counter - 4;
+      int disp = literal.offset - location_counter;// - 4;
       sectionNode.data.push_back((char)(0x3B));
       sectionNode.data.push_back((char)(0xF << 4) | val1);
       sectionNode.data.push_back((char)((val2 << 4) | ((disp >> 8) & 0x0F)));
@@ -2380,7 +2381,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
         if (current_pool.find(operand) != current_pool.end())
         {
           LiteralPoolTable &literal_current = current_pool.at(operand);
-          int disp = literal_current.offset - location_counter - 4;
+          int disp = literal_current.offset - location_counter;// - 4;
           sectionNode.data.push_back((char)(0x82));
           sectionNode.data.push_back((char)0xF0);
           sectionNode.data.push_back((char)((reg << 4) | ((disp >> 8) & 0x0F)));
@@ -2398,7 +2399,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
           int val = symbols.at(operand).value;
           poolData &current_pool = pool.at(current_section);
           LiteralPoolTable &literal = current_pool.at(operand);
-          int disp = literal.offset - location_counter - 4;
+          int disp = literal.offset - location_counter;// - 4;
           sectionNode.data.push_back((char)(0x82));
           sectionNode.data.push_back((char)0xF0);
           sectionNode.data.push_back((char)((reg << 4) | ((disp >> 8) & 0x0F)));
@@ -2510,7 +2511,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
         if (current_pool.find(operand) != current_pool.end())
         {
           LiteralPoolTable &literal_current = current_pool.at(operand);
-          int disp = literal_current.offset - location_counter - 4;
+          int disp = literal_current.offset - location_counter;// - 4;
           sectionNode.data.push_back((char)(0x92));
           sectionNode.data.push_back((char)(reg << 4));
           sectionNode.data.push_back((char)(((0xF << 4) | ((disp >> 8) & 0xF))));
@@ -2528,7 +2529,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
           int val = symbols.at(operand).value;
           poolData &current_pool = pool.at(current_section);
           LiteralPoolTable &literal = current_pool.at(operand);
-          int disp = literal.offset - location_counter - 4;
+          int disp = literal.offset - location_counter;// - 4;
           sectionNode.data.push_back((char)(0x92));
           sectionNode.data.push_back((char)(reg << 4));
           sectionNode.data.push_back((char)(((0xF << 4) | ((disp >> 8) & 0xF))));
@@ -2554,7 +2555,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
         if (current_pool.find(operand) != current_pool.end())
         {
           LiteralPoolTable &literal_current = current_pool.at(operand);
-          int disp = literal_current.offset - location_counter - 4;
+          int disp = literal_current.offset - location_counter;// - 8;
           sectionNode.data.push_back((char)0x92);
           sectionNode.data.push_back((char)(reg << 4));
           sectionNode.data.push_back((char)(((0xF << 4) | ((disp >> 8) & 0xF))));
@@ -2565,7 +2566,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
           sectionNode.data.push_back((char)(0x00));
           sectionNode.data.push_back((char)(0x00));
           location_counter = location_counter + 4; // ali se onda ne poklapa sa prvim prolazom?
-          sectionNode.size += 4;
+          sectionNode.size += 8;
         }
       }
       else
@@ -2579,7 +2580,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
           int val = symbols.at(operand).value;
           poolData &current_pool = pool.at(current_section);
           LiteralPoolTable &literal = current_pool.at(operand);
-          int disp = literal.offset - location_counter - 4;
+          int disp = literal.offset - location_counter;// - 8;
           sectionNode.data.push_back((char)0x92);
           sectionNode.data.push_back((char)(reg << 4));
           sectionNode.data.push_back((char)((((0xF << 4) | ((disp >> 8) & 0xF)))));
@@ -2590,9 +2591,8 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
           sectionNode.data.push_back((char)(0x00));
           sectionNode.data.push_back((char)(0x00));
           location_counter = location_counter + 4; // ali se onda ne poklapa sa prvim prolazom?
-          sectionNode.size += 4;
+          sectionNode.size += 8;
         }
-        sectionNode.size += 4;
         this->assembler_help_file << "Load memory direct: " << operand << endl;
       }
     }
