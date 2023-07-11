@@ -45,8 +45,14 @@ public:
   //-----------------------------------------------------------------------Instructions-------------------------
 
   regex halt_inst = regex ("^(halt)$");
-  regex int_inst = regex("^(int) " + register_regex);
+  regex int_inst = regex("^(int)$");
   regex iret_inst = regex("^(iret)$");
+  regex call_inst = regex("^(call) (.*)");
+  regex ret_inst = regex("^(ret)$");
+  regex jmp_inst = regex("^(jmp) (.*)");
+  regex beq_inst = regex("^(beq) (.*)");
+  regex bne_inst = regex("^(bne) (.*)");
+  regex bgt_inst = regex("^(bgt) (.*)");
   regex push_inst = regex("(push) " + register_regex);
   regex pop_inst = regex("^(pop) " + register_regex);
   regex xchg_inst = regex("^(xchg) " + register_regex + "," + register_regex);
@@ -62,12 +68,6 @@ public:
   regex shr_inst = regex("^(shr) " + register_regex + "," + register_regex);
   regex ld_inst = regex("^(ld) (.*)");
   regex st_inst = regex("^(st) (.*)");
-  regex call_inst = regex("^(call) (.*)");
-  regex ret_inst = regex("^(ret)$");
-  regex jmp_inst = regex("^(jmp) (.*)");
-  regex beq_inst = regex("^(beq) (.*)");
-  regex bne_inst = regex("^(bne) (.*)");
-  regex bgt_inst = regex("^(bgt) (.*)");
   regex csrrd_inst = regex("^(csrrd) (.*)");
   regex csrwr_inst = regex("^(csrwr) (.*)");
 

@@ -132,6 +132,6 @@ class Assembler {
     void savePoolData(string current_section, SectionTableNode *current_section_node);
     void calculatePoolData(string current_section, SectionTableNode *current_section_node);
     void GetOperandBJmps(string label, string *r1, string *r2, string *operand);
-    void convert_to_little_endian(vector<char> *data);
+    void convert_to_little_endian(vector<char> *data, int size);
 };
 #endif 

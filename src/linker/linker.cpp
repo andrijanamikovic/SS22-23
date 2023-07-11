@@ -739,6 +739,7 @@ int Linker::resolve_relocations()
     }
     else if (it->type == "R_X86_64_32")
     {
+      cout << "Ovde mi nije pc rel? " << endl;
       offset = it->offset;
       value = current.value; // + it->addend;
     }
@@ -747,6 +748,7 @@ int Linker::resolve_relocations()
       cout << "Error while resolving relocation";
       return -1;
     }
+    cout << endl << "Meni linker ovde razresava relokaciju: " << it->name << " u sekciji: " << current_section.name << " na offsetu: " << hex << offset << " sa vrednosti: " << hex << value << endl;
     value += it->addend;
     current_section.data[offset + 3] = ((char)(0xff & value));
     current_section.data[offset + 2] = ((char)(0xff & value >> 8));

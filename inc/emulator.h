@@ -90,19 +90,19 @@ private:
   vector<Segment> segments;
   vector<char> memory;
   bool running;
-  long reg[16]; 
+  int reg[16]; 
   int status;
   int handler;
   int cause;
-  long temp;
+  int temp;
   int load_data_for_emulator();
   int load_to_memory();
-  long read_instruction();
-  int execute(long opcode);
+  int read_instruction();
+  int execute(int opcode);
   int interrupt();
   void print_register_output();
-  long read_dword(long address);
-  int store_dword(long address, long value);
+  unsigned int read_dword(unsigned int address);
+  int store_dword(unsigned int address, int value);
   int get_reg_num(unsigned char reg);
 };
 
