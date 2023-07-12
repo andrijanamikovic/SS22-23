@@ -51,7 +51,6 @@ class SectionTableNode {
 
 class LiteralPoolTable {
   public:
-  string key;
   long name;
   long offset;
   bool defined = false; //da li sam vec definisala pomeraj ili ne
@@ -77,6 +76,7 @@ enum INSTRUCTIONS{
   SHR = 0x71,
   CALL = 0x21,
   JMP = 0x38,
+  JMP1 = 0x30,
   BEQ = 0x39,
   BNE = 0x3A,
   BGT = 0x3B,
@@ -87,10 +87,9 @@ enum INSTRUCTIONS{
   ST3 = LD1, 
   CSRRD = 0x90,
   CSRWR = 0x94,
-  RET,
-  IRET,
+  IRET = 0x97,
   PUSH = 0x81,
-  POP = 0x93
+  POP = 0x93,
 };
 
 

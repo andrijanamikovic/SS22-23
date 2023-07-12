@@ -828,7 +828,7 @@ void Linker::make_hex_file()
       {
         *hex_help << std::setfill('0') << std::setw(8) << hex << (0xFFFFFFFF & i) << ": ";
       }
-      *hex_help << setfill('0') << std::setw(3) << " ";
+      *hex_help << setfill('x') << std::setw(3) << " ";
       i++;
     }
     for (unsigned char c : current_Section.data)
