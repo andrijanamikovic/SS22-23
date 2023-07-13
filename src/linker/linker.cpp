@@ -23,7 +23,6 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
       return;
     }
   }
-  this->printSectionTableInFile();
   int ret = 0;
   cout << "Map sections called" << endl;
   ret = this->map_section_table();
@@ -378,7 +377,7 @@ int Linker::move_sections()
   this->startAddress = startAddr.begin()->second;
   for (auto it = startAddr.begin(); it != startAddr.end(); ++it)
   {
-    linker_help_file << "place: " << it->first << " address: " << it->second << endl;
+    linker_combined_file << "place: " << it->first << " address: " << it->second << endl;
     this->startAddress = it->second < this->startAddress ? it->second : this->startAddress;
     if (output_sections.find(it->first) == output_sections.end())
     {
@@ -403,6 +402,7 @@ int Linker::move_sections()
         return -1;
       }
       current_file_sections.at(it->first).address += last_section_address;
+      linker_combined_file << "Place in file: " << file << " start address for section: " << it->first << " = " << current_file_sections.at(it->first).address << endl;
       last_section_address += current_file_sections.at(it->first).size;
       next_address = last_section_address;
       last_non_mapped_section_address = last_section_address > last_non_mapped_section_address ? last_section_address : last_non_mapped_section_address;
@@ -428,13 +428,14 @@ label:
         continue;
       }
       current_file_sections.at(it->first).address += last_non_mapped_section_address;
+          linker_combined_file << "In file: " << file << " start address for section: " << it->first << " = " << current_file_sections.at(it->first).address << endl;
       last_non_mapped_section_address += current_file_sections.at(it->first).size;
       next_address = last_non_mapped_section_address;
     }
   }
   this->endAddress = next_address;
   int ret = check_overlapping();
-  linker_help_file << "end of move sections" << endl;
+  linker_combined_file << "end of move sections" << endl;
   for (auto it = output_sections.begin(); it != output_sections.end(); ++it)
   {
     sorted_sections.insert({it->second.address, it->first});
@@ -718,7 +719,7 @@ int Linker::resolve_relocations()
     if (it->type == "R_X86_64_PC32")
     {
       offset = it->offset;
-      offset += sections.at(it->filename).at(it->section_name).address - output_sections.at(it->section_name).address;
+      // offset += sections.at(it->filename).at(it->section_name).address - output_sections.at(it->section_name).address; Ja sam vec izracunala ovo u zajednickoj tabeli relokacija!
       cout << endl
            << "Za simbol: " << it->name << " u sekciji: " << it->section_name << "offset je: " << offset << endl
            << endl;
@@ -740,7 +741,7 @@ int Linker::resolve_relocations()
     current_section.data[offset + 2] = ((char)(0xff & value >> 8));
     current_section.data[offset + 1] = ((char)(0xff & value >> 16));
     current_section.data[offset] = ((char)(0xff & value >> 24)); //+ ili -?
-    this->linker_combined_file << "Relokacija: " << it->name << " u sekciji: " << it->section_name << " na offsetu: " << sections.at(it->filename).at(it->section_name).address + offset  << " sa vrednosti: " << value  << " unutar sekcije offset: " <<  offset << endl;
+    this->linker_combined_file << "Relokacija: " << it->name << " u sekciji: " << it->section_name << " na offsetu: " << output_sections.at(it->section_name).address + offset  << " sa vrednosti: " << value  << " unutar sekcije offset: " <<  offset << endl;
     // if ((!current.local && !current.extern_sym) || current.type == "SCTN")
     // {
     //   current_reloc.addend += current.value;
@@ -842,6 +843,7 @@ void Linker::make_hex_file()
 
 int Linker::resolve_relocations_relocatable()
 {
+  //to mi ne treba valjda
   int ret = 0;
   long value;
   for (RelocationTableNode current_relocation : output_relocations)
