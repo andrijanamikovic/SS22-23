@@ -23,7 +23,7 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
       return;
     }
   }
-  // this->printSectionTableInFile();
+  this->printSectionTableInFile();
   int ret = 0;
   cout << "Map sections called" << endl;
   ret = this->map_section_table();
@@ -32,6 +32,8 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
     cout << "Error while mapping sections" << endl;
     return;
   }
+  this->linker_combined_file << "Samo sekcije spojene da li ovde pravis gresku? " << endl;
+  this->printSectionTableLinker();
   cout << "Map sections done, call map symbols" << endl;
   ret = this->map_symbol_table();
   if (ret < 0)
@@ -311,27 +313,19 @@ int Linker::map_section_table()
             symbol.section_id = old.section_id;
           }
         }
-        // for (auto it1 = current_relocation_table.begin(); it1 != current_relocation_table.end(); ++it1)
-        // {
-        //   RelocationTableNode &reloc = it1->second;
-        //   if (reloc.section_name == current.name)
-        //   {
-        //     reloc.offset += current.address;
-        //   }
-        // }
         current.section_id = old.section_id;
         for (char c : current.data)
         {
           old.data.push_back(c);
         }
         old.size += current.size;
-        output_sections.erase(it->first);
+        // output_sections.erase(it->first);
         output_sections.insert({it->first, old});
       }
       else
       {
+        this->linker_combined_file << "Ovde udje za sekciju: " << it->first << endl;
         current.address = 0;
-        // current.address = next_address;
         for (auto it1 = current_symbols_table.begin(); it1 != current_symbols_table.end(); ++it1)
         {
           SymbolTableNode &symbol = it1->second;
@@ -340,14 +334,6 @@ int Linker::map_section_table()
             symbol.section_id = _section_id + 1;
           }
         }
-        // for (auto it1 = current_relocation_table.begin(); it1 != current_relocation_table.end(); ++it1)
-        // {
-        //   RelocationTableNode &reloc = it1->second;
-        //   if (reloc.section_id == current.section_id)
-        //   {
-        //     reloc.section_id = _section_id + 1;
-        //   }
-        // }
         current.section_id = ++_section_id;
         output_sections.insert({it->first, current});
       }
@@ -754,7 +740,7 @@ int Linker::resolve_relocations()
     current_section.data[offset + 2] = ((char)(0xff & value >> 8));
     current_section.data[offset + 1] = ((char)(0xff & value >> 16));
     current_section.data[offset] = ((char)(0xff & value >> 24)); //+ ili -?
-    this->linker_combined_file << "Relokacija: " << it->name << " u sekciji: " << it->section_name << " na offsetu: " << sections.at(it->filename).at(it->section_name).address + offset  << " sa vrednosti: " << value << endl;
+    this->linker_combined_file << "Relokacija: " << it->name << " u sekciji: " << it->section_name << " na offsetu: " << sections.at(it->filename).at(it->section_name).address + offset  << " sa vrednosti: " << value  << " unutar sekcije offset: " <<  offset << endl;
     // if ((!current.local && !current.extern_sym) || current.type == "SCTN")
     // {
     //   current_reloc.addend += current.value;

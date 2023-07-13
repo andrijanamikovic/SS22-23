@@ -144,7 +144,7 @@ int Emulator::store_dword(unsigned int address, int value)
   memory[address + 2] = ((char)(0xff & value >> 8));
   memory[address + 1] = ((char)(0xff & value >> 16));
   memory[address] = ((char)(0xff & value >> 24)); //+ ili -?
-
+  cout << endl << "Upisano je u memoriju!" << endl;
   return 0;
 }
 
@@ -211,6 +211,7 @@ int Emulator::execute(int opcode)
   switch (code)
   {
   case HALT:
+    reg[pc] = reg[pc] + 4;
     emulator_help_file << "HALT" << endl;
     running = false;
     return 0;
@@ -259,17 +260,17 @@ int Emulator::execute(int opcode)
     // regA <= regB + regC
     this->emulator_help_file << "add " << regA << " = " << regB << " + " << regC << endl;
     if (regA != 0)
-      reg[regA] = reg[regB] - reg[regC];
+      reg[regA] = reg[regB] + reg[regC];
     if (regA != pc)
         reg[pc] += 4;
-    // cout << "ADD" << endl;
+    cout << "ADD" << endl;
     break;
   case SUB:
     // regA <= regB - regC
     this->emulator_help_file << "sub " << regA << " = " << regB << " - " << regC << endl;
     if (regA != 0)
       reg[regA] = reg[regB] - reg[regC];
-    // cout << "SUB" << endl;
+    cout << "SUB" << endl;
     if (regA != pc)
         reg[pc] += 4;
     break;
@@ -350,7 +351,7 @@ int Emulator::execute(int opcode)
     // push pc;
     // pc <= mem[regA + regB + d];
     reg[sp] = reg[sp] - 4;
-    store_dword(reg[sp], reg[pc]);
+    store_dword(reg[sp], reg[pc] + 4);
     address = reg[regA] + reg[regB] + disp;
     // cout << "ovde mi disp brate: " << hex << disp << "pc mi je: " << hex << reg[regA] << " a ovaj drugi " << hex << reg[regB] << endl;
     address = address & 0xFFFFFFFF;

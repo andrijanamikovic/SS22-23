@@ -2562,7 +2562,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
           // a u literalVal treba rastojanje do bazena literala
           sectionNode.data.push_back((char)0x92);
           sectionNode.data.push_back((char)(reg << 4));
-          sectionNode.data.push_back((char)(0x00));
+          sectionNode.data.push_back((char)((reg << 4) & 0xF0));
           sectionNode.data.push_back((char)(0x00));
           location_counter = location_counter + 4; // ali se onda ne poklapa sa prvim prolazom?
           sectionNode.size += 8;
@@ -2587,7 +2587,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
           // a u literalVal treba rastojanje do bazena literala
           sectionNode.data.push_back((char)0x92);
           sectionNode.data.push_back((char)(reg << 4));
-          sectionNode.data.push_back((char)(0x00));
+          sectionNode.data.push_back((char)((reg << 4) & 0xF0));
           sectionNode.data.push_back((char)(0x00));
           location_counter = location_counter + 4; // ali se onda ne poklapa sa prvim prolazom?
           sectionNode.size += 8;
