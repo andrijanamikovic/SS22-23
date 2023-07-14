@@ -203,7 +203,7 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
       {
         if (symbols.find(it.first) == symbols.end())
         {
-          cout << "Nema ovaj simbol u tabeli: " << it.first << endl;
+          // cout << "Nema ovaj simbol u tabeli: " << it.first << endl;
           continue;
         }
         SymbolTableNode &current_symbol = symbols.at(it.first);
@@ -381,7 +381,7 @@ int Assembler::process()
 
 int Assembler::process_second_pass()
 {
-  cout << "Drugi kurg assemeblera" << endl;
+  // cout << "Drugi kurg assemeblera" << endl;
   int ret = 0;
   for (string line : lines)
   {
@@ -436,50 +436,19 @@ int Assembler::process_label(string label)
              << "Error at line: " << this->current_line << endl;
         return -1;
       }
-      cout << "Zasto nisi definisao? " << symbol.name << endl;
       symbol.defined = true;
       symbol.value = location_counter;
       symbol.section_id = this->_section_id;
       symbol.section_name = this->current_section;
       symbol.name = label;
-      // poolData &current_pool = pool.at(current_section);
-      // if (symbol.used)
-      // {
-      //   if (current_pool.find(label) == current_pool.end())
-      //   {
-      //     LiteralPoolTable *literal = new LiteralPoolTable(symbol.value, location_counter);
-      //     literal->symbol = true;
-      //     current_pool.insert({label, *literal});
-      //   }
-      //   else
-      //   {
-      //     LiteralPoolTable &literal = current_pool.at(label);
-      //     literal.symbol = true;
-      //     literal.offset = location_counter;
-      //   }
-      // }
     }
-    cout << "Vec postoji simbol labela: " << endl;
-    // for (auto it = relocations.begin(); it != relocations.end(); ++it)
-    // {
-    //   if (it->name == label && it->local == false)
-    //   {
-    //     cout << "Jesi usao ovde za nesto da prepravis leba ti" << endl
-    //          << endl;
-    //     it->local = true;
-    //     it->name = it->section_name;
-    //     // it->addend = location_counter;
-    //     it->offset = location_counter;
-    //     break;
-    //   }
-    // }
   }
   return 0;
 }
 
 int Assembler::process_command(string command, bool first)
 {
-  cout << "Zove proces command: " << command << "First? " << first << endl;
+  // cout << "Zove proces command: " << command << "First? " << first << endl;
   smatch match;
   int ret = 0;
   if (regex_search(command, match, rx.extern_dir))
@@ -794,14 +763,9 @@ int Assembler::process_extern_dir(smatch match)
       symbols.insert({s, *symbol});
       assembler_help_file << ".extern "
                           << "symbol_name: " << s << " location counter: " << location_counter << " section: " << this->current_section << endl;
-
-      // LiteralPoolTable *literal = new LiteralPoolTable(symbol->value, 0);
-      // literal->symbol = true;
-      // current_pool.insert({symbol->name, *literal});
     }
     else
     {
-      // found
       SymbolTableNode &symbol = symbols.at(s);
       if (symbol.defined || !symbol.extern_sym)
       {
@@ -830,7 +794,6 @@ int Assembler::process_global_dir(smatch match)
     if (symbols.find(s) == symbols.end())
     {
       // not found
-
       SymbolTableNode *symbol = new SymbolTableNode(++this->_symbol_id, 0, false, false, false);
       symbol->name = s;
       symbol->type = "NOTYP";
@@ -838,9 +801,6 @@ int Assembler::process_global_dir(smatch match)
       symbols.insert({s, *symbol});
       assembler_help_file << ".global "
                           << "symbol_name: " << s << " location counter: " << location_counter << " section: " << symbol->section_name << endl;
-      // LiteralPoolTable *literal = new LiteralPoolTable(symbol->value, 0);
-      // literal->symbol = true;
-      // current_pool.insert({symbol->name, *literal});
     }
     else
     {
@@ -872,7 +832,7 @@ int Assembler::process_section_dir(smatch match)
     return -1;
   }
   else if (symbols.find(section_name) != symbols.end())
-  { // da li sekcija i simbol mogu da imaju isto ime
+  {
     cout << "Symbol with the same name already defined" << endl
          << "Error at line: " << this->current_line << endl;
     return -1;
@@ -964,18 +924,16 @@ int Assembler::word_dir_second(smatch match)
 
         if (symbol.local)
         {
-          // pogledam vrednost iz tabele i metnem u fajl
           assembler_help_file << "Word with symbol value: " << symbol.value << " location_counter : " << location_counter << endl;
           sectionNode.data.push_back((char)((symbol.value >> 24) & 0xFF));
           sectionNode.data.push_back((char)((symbol.value >> 16) & 0xFF));
           sectionNode.data.push_back((char)((symbol.value >> 8) & 0xFF));
           sectionNode.data.push_back((char)((symbol.value) & 0xFF));
 
-          //
           RelocationTableNode *relocation_data = new RelocationTableNode(symbol.section_id, symbol.section_name, current_section);
           relocation_data->local = true;
           relocation_data->type = "R_X86_64_32";
-          relocation_data->addend = symbol.value; // 0; // location_counter; dodovic 0
+          relocation_data->addend = symbol.value;
           relocation_data->offset = location_counter;
           relocations.push_back(*relocation_data);
           // relocation_data->offset = location_counter;
@@ -1008,12 +966,6 @@ int Assembler::word_dir_second(smatch match)
     }
     else
     {
-      // ako je broj bacim allocate za toliki prostor samo
-
-      // int dataInt = (getLiteralValue(s) >> 24) & 0xFF000000;
-      // sectionNode.data.push_back((int)dataInt);
-      // dataInt = getLiteralValue(s) & 0xFFFFFFFF;
-      // sectionNode.data.push_back((int)dataInt);
       int dataInt = getLiteralValue(s);
       sectionNode.data.push_back((char)((dataInt >> 24) & 0xFF));
       sectionNode.data.push_back((char)((dataInt >> 16) & 0xFF));
@@ -1364,20 +1316,13 @@ int Assembler::call_inst_second(smatch match)
       int val = symbol.value;
       poolData &current_pool = pool.at(current_section);
       LiteralPoolTable &literal = current_pool.at(operand);
-      int disp = literal.offset - location_counter; // - 4;
-      cout << "Za: " << operand << endl;
-      cout << "Ugradio disp: " << hex << disp << " ? " << endl;
+      int disp = literal.offset - location_counter; 
       sectionNode.data.push_back((char)(0x21));
       sectionNode.data.push_back((char)0xF0);
       sectionNode.data.push_back((char)((0 << 4) | ((disp >> 8) & 0x0F)));
       sectionNode.data.push_back((char)(disp & 0xFF));
     }
-    // vrednost simbola?
-    // ako ne znam?
-    // ako znam jer on onda odmah u bazenu literala kad je definisan? nije? samo u tabeli?
-    // proverim dal je veca od 12 ako nije onda odmah, a ako jeste onda bazen literala?
   }
-  // ret = process_symbol_disp(CALL, 0, match.str(2), sectionNode);
 
   sectionNode.size += 4;
   location_counter += 4;
@@ -2380,7 +2325,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
         if (current_pool.find(operand) != current_pool.end())
         {
           LiteralPoolTable &literal_current = current_pool.at(operand);
-          int disp = literal_current.offset - location_counter; // - 4;
+          int disp = literal_current.offset - location_counter;
           sectionNode.data.push_back((char)(0x82));
           sectionNode.data.push_back((char)0xF0);
           sectionNode.data.push_back((char)((reg << 4) | ((disp >> 8) & 0x0F)));
@@ -2619,15 +2564,9 @@ void Assembler::outputTables()
     binary_output->write((char *)(&dataInt), sizeof(unsigned)); // size
     unsigned len = (unsigned)it->second.name.size();
     binary_output->write((char *)(&len), sizeof(unsigned));
-    // cout << "Velicina sekcije " << it->second.name << " : " << dataInt << "id: " << it->second.section_id << " address: " << it->second.address <<endl;
     binary_output->write((char *)(&it->second.section_id), sizeof(it->second.section_id));
     binary_output->write((char *)(&it->second.address), sizeof(it->second.address));
-    // long data_size = it->second.data.size();
-    // binary_output->write((char *)(&data_size), sizeof(data_size));
-    // cout << "Duzina imena sekcije: " << len << " ime: " <<  it->second.name << endl;
     binary_output->write((char *)it->second.name.c_str(), len);
-    // reverse(it->second.data.begin(), it->second.data.end()); // ne znam dal moze ovako da se prebaci na little-endian
-    cout << "nece u fore? " << data.size() << endl;
     for (char c : data)
     {
       binary_output->write((char *)(&c), sizeof(c));
@@ -2690,7 +2629,6 @@ void Assembler::convert_to_little_endian(vector<char> *data, int size)
     size++;
   }
   int i = 0;
-  // cout << "Velcina: " << size << endl;
   auto begin = data->begin();
   while (i < size)
   {
@@ -2699,6 +2637,5 @@ void Assembler::convert_to_little_endian(vector<char> *data, int size)
     reverse(start, end);
     i = i + 4;
   }
-  // cout << "Izasao iz while " << size << endl;
   return;
 }

@@ -119,7 +119,6 @@ int Emulator::load_to_memory()
   int ret = 0;
   for (Segment s : segments)
   {
-    // cout << "Segment sa pocetnom adresom: " << hex << s.startAddress << " " << setfill('0') << std::setw(2) << hex << (0xFF & s.data[0]) << endl;
     for (int i = 0; i < s.size; i++)
     {
       if (i + s.startAddress > MEM_MAPPED_REGISTERS)
@@ -174,10 +173,10 @@ void Emulator::print_register_output()
   cout << "r14=0x" << std::setfill('0') << std::setw(8) << hex << reg[14] << " ";
   cout << "r15=0x" << std::setfill('0') << std::setw(8) << hex << reg[15] << " ";
   cout << endl;
-  cout << "handler=0x" << std::setfill('0') << std::setw(8) << hex << handler << " ";
-  cout << "cause=0x" << std::setfill('0') << std::setw(8) << hex << cause << " ";
-  cout << "status=0x" << std::setfill('0') << std::setw(8) << hex << status << " ";
-  cout << endl;
+  // cout << "handler=0x" << std::setfill('0') << std::setw(8) << hex << handler << " ";
+  // cout << "cause=0x" << std::setfill('0') << std::setw(8) << hex << cause << " ";
+  // cout << "status=0x" << std::setfill('0') << std::setw(8) << hex << status << " ";
+  // cout << endl;
 }
 
 int Emulator::read_instruction()
@@ -185,8 +184,8 @@ int Emulator::read_instruction()
   int ret = 0;
   int opcode;
   opcode = read_dword(reg[pc]);
-  cout << "PC: " << hex << reg[pc] << endl;
-  this->print_register_output();
+  emulator_help_file << "PC: " << hex << reg[pc] << endl;
+  // this->print_register_output();
   execute(opcode);
   return ret;
 }
@@ -232,7 +231,7 @@ int Emulator::execute(int opcode)
     // //pc <= handle;
     reg[pc] = handler;
     interrupted = true;
-    cout << "INT handler:" << hex << handler << endl;
+    emulator_help_file << "INT handler:" << hex << handler << endl;
     break;
   case IRET:
     // pop status
@@ -240,7 +239,7 @@ int Emulator::execute(int opcode)
     reg[sp] = reg[sp] + 4;
     //pop pc
     reg[pc] = reg[pc] + 4;
-    cout << "IRET" << endl;
+    emulator_help_file << "IRET" << endl;
     break;
   case XCHG:
     // temp <= regB
@@ -254,7 +253,7 @@ int Emulator::execute(int opcode)
       reg[regC] = temp;
     if (regB != pc && regC != pc)
         reg[pc] += 4;
-    cout << "XCHG" << endl;
+    emulator_help_file << "XCHG" << endl;
     break;
   case ADD:
     // regA <= regB + regC
@@ -263,14 +262,14 @@ int Emulator::execute(int opcode)
       reg[regA] = reg[regB] + reg[regC];
     if (regA != pc)
         reg[pc] += 4;
-    cout << "ADD" << endl;
+    // cout << "ADD" << endl;
     break;
   case SUB:
     // regA <= regB - regC
     this->emulator_help_file << "sub " << regA << " = " << regB << " - " << regC << endl;
     if (regA != 0)
       reg[regA] = reg[regB] - reg[regC];
-    cout << "SUB" << endl;
+    // cout << "SUB" << endl;
     if (regA != pc)
         reg[pc] += 4;
     break;
@@ -281,14 +280,14 @@ int Emulator::execute(int opcode)
       reg[regA] = reg[regB] * reg[regC];
     if (regA != pc)
         reg[pc] += 4;
-    cout << "MUL" << endl;
+    // cout << "MUL" << endl;
     break;
   case DIV:
     // regA <= regB / regC
     this->emulator_help_file << "div " << regA << " = " << regB << " / " << regC << endl;
     if (regA != 0)
       reg[regA] = reg[regB] / reg[regC];
-    cout << "DIV" << endl;
+    // cout << "DIV" << endl;
     if (regA != pc)
         reg[pc] += 4;
     break;
@@ -297,7 +296,7 @@ int Emulator::execute(int opcode)
     this->emulator_help_file << "not " << regA << " = ~" << regB << endl;
     if (regA != 0)
       reg[regA] = ~reg[regB];
-    cout << "NOT" << endl;
+    // cout << "NOT" << endl;
     if (regA != pc)
         reg[pc] += 4;
     break;
@@ -307,7 +306,7 @@ int Emulator::execute(int opcode)
 
     if (regA != 0)
       reg[regA] = reg[regB] & reg[regC];
-    cout << "AND" << endl;
+    // cout << "AND" << endl;
     if (regA != pc)
         reg[pc] += 4;
     break;
@@ -316,7 +315,7 @@ int Emulator::execute(int opcode)
     this->emulator_help_file << "or " << regA << " = " << regB << " | " << regC << endl;
     if (regA != 0)
       reg[regA] = reg[regB] | reg[regC];
-    cout << "OR" << endl;
+    // cout << "OR" << endl;
     if (regA != pc)
         reg[pc] += 4;
     break;
@@ -325,7 +324,7 @@ int Emulator::execute(int opcode)
     this->emulator_help_file << "xor " << reg[regA] << " = " << reg[regB] << " ^ " << reg[regC] << endl;
     if (regA != 0)
       reg[regA] = reg[regB] ^ reg[regC];
-    cout << "XOR" << endl;
+    // cout << "XOR" << endl;
     if (regA != pc)
         reg[pc] += 4;
     break;
@@ -334,7 +333,7 @@ int Emulator::execute(int opcode)
     this->emulator_help_file << "shl " << reg[regA] << " = " << reg[regB] << " << " << reg[regC] << endl;
     if (regA != 0)
       reg[regA] = reg[regB] << reg[regC];
-    cout << "SHL" << endl;
+    // cout << "SHL" << endl;
     if (regA != pc)
         reg[pc] += 4;
     break;
@@ -343,7 +342,7 @@ int Emulator::execute(int opcode)
     this->emulator_help_file << "shr " << reg[regA] << " = " << reg[regB] << " >> " << reg[regC] << endl;
     if (regA != 0)
       reg[regA] = reg[regB] >> reg[regC];
-    cout << "SHR" << endl;
+    // cout << "SHR" << endl;
     if (regA != pc)
         reg[pc] += 4;
     break;
@@ -358,29 +357,29 @@ int Emulator::execute(int opcode)
     cout << hex << address << endl;
     val = read_dword(address) & 0xFFFFFFFF;
     reg[pc] = val;
-    cout << "CALL2 procitano sa adrese " << hex << address << " vrednost: " << hex << val << endl;
+    // cout << "CALL2 procitano sa adrese " << hex << address << " vrednost: " << hex << val << endl;
     break;
   case JMP1:
-    // pc <= meme[regA + d]
+    // pc <= regA + d
     reg[pc] = (reg[regA] + disp) & 0xFFFFFFFF;
-    cout << "JMP1 preskacem pool: " << hex << reg[regA] + disp << endl;
+    // cout << "JMP1 preskacem pool: " << hex << reg[regA] + disp << endl;
     break;
   case JMP:
     // pc <= meme[regA + d]
     reg[pc] = read_dword(reg[regA] + disp) & 0xFFFFFFFF;
-    cout << "JMP procitano sa adrese: " << hex << reg[regA] + disp << endl;
+    // cout << "JMP procitano sa adrese: " << hex << reg[regA] + disp << endl;
     break;
   case BEQ:
     // if (regB == regC)
     // pc <= meme[regB + d]
     if (reg[regB] == reg[regC])
     {
-      cout << "Prosao je BEQ" << endl;
+      // cout << "Prosao je BEQ" << endl;
       reg[pc] = read_dword(reg[regA] + disp) & 0xFFFFFFFF;
     } else {
         reg[pc] += 4;
     }
-    cout << "BEQ2 procitano sa adrese: " << hex << reg[regA] + disp << endl;
+    // cout << "BEQ2 procitano sa adrese: " << hex << reg[regA] + disp << endl;
     break;
   case BNE:
     // if (regA != regC)
@@ -391,7 +390,7 @@ int Emulator::execute(int opcode)
     } else {
         reg[pc] += 4;
     }
-    cout << "BNE2 procitano sa adrese: " << hex <<  reg[regA] + disp<< endl;
+    // cout << "BNE2 procitano sa adrese: " << hex <<  reg[regA] + disp<< endl;
     break;
   case BGT:
     // if (regA > regC)
@@ -402,13 +401,13 @@ int Emulator::execute(int opcode)
     } else {
         reg[pc] += 4;
     }
-    cout << "BGT2 procitano sa adrese: " << hex <<  reg[regA] + disp << endl;
+    // cout << "BGT2 procitano sa adrese: " << hex <<  reg[regA] + disp << endl;
     break;
   case LD1:
     // regA <= regB + D
     if (regA != 0)
       reg[regA] = reg[regB] + disp;
-    cout << "LD1" << endl;
+    // cout << "LD1" << endl;
     if (regA != pc)
         reg[pc] += 4;
     break;
@@ -418,22 +417,22 @@ int Emulator::execute(int opcode)
       reg[regA] = read_dword(reg[regB] + reg[regC] + disp) & 0xFFFFFFFF;
     if (regA != pc)
         reg[pc] += 4;
-    cout << "LD2 cita sa adrese: " << hex << reg[regB] + reg[regC] + disp << endl;
-    cout << "Upisao je u: "  << regA << " = " << hex << reg[regA] << endl;
+    // cout << "LD2 cita sa adrese: " << hex << reg[regB] + reg[regC] + disp << endl;
+    // cout << "Upisao je u: "  << regA << " = " << hex << reg[regA] << endl;
     break;
   case ST1:
     // mem[regA + regB + disp] <= regC
     store_dword(reg[regA] + reg[regB] + disp, reg[regC]);
-    cout << "Adresa za smestanje podatka je: " << hex << reg[regA] + reg[regB] + disp << " a podatak je " << hex << reg[regC] << endl;
-    cout << "ST1" << endl;
+    // cout << "Adresa za smestanje podatka je: " << hex << reg[regA] + reg[regB] + disp << " a podatak je " << hex << reg[regC] << endl;
+    // cout << "ST1" << endl;
     reg[pc] += 4;
     break;
   case ST2:
     // mem[mem[regA + regB + disp]] <= regC
     address = read_dword(reg[regA] + reg[regB] + disp) & 0xFFFFFFFF;
-    cout << "Adresa za smestanje podatka je: " << hex << address << " a podatak je " << hex << reg[regC] << endl;
+    // cout << "Adresa za smestanje podatka je: " << hex << address << " a podatak je " << hex << reg[regC] << endl;
     store_dword(address, reg[regC]);
-    cout << "ST2" << endl;
+    // cout << "ST2" << endl;
     reg[pc] += 4;
     break;
   case CSRRD:
@@ -454,7 +453,7 @@ int Emulator::execute(int opcode)
         break;
       }
     reg[pc] += 4;
-    cout << "CSRRD" << endl;
+    // cout << "CSRRD" << endl;
     break;
   case CSRWR:
     // csr[A] <= regB
@@ -465,7 +464,7 @@ int Emulator::execute(int opcode)
       break;
     case 1:
       handler = reg[regB];
-      cout << "U handler je sad: " << hex << reg[regB] << endl;
+      // cout << "U handler je sad: " << hex << reg[regB] << endl;
       break;
     case 2:
       cause = reg[regB];
@@ -474,7 +473,7 @@ int Emulator::execute(int opcode)
       break;
     }
     reg[pc] += 4;
-    cout << "CSRWR" << endl;
+    // cout << "CSRWR" << endl;
     break;
   case PUSH:
     // regA <= regA + D
@@ -483,7 +482,7 @@ int Emulator::execute(int opcode)
     //   reg[regA] = reg[regA] + disp;
     reg[sp] -= 4;
     store_dword(reg[sp], reg[regC]);
-    cout << "PUSH" << endl;
+    // cout << "PUSH" << endl;
     reg[pc] += 4;
     break;
   case POP:
@@ -491,7 +490,7 @@ int Emulator::execute(int opcode)
     // regA <= regA + d;
     reg[regC] = read_dword(reg[sp]) & 0xFFFFFFFF;
     reg[sp] += 4;
-    cout << "POP" << endl;
+    // cout << "POP" << endl;
     if (regC != pc)
       reg[pc] += 4;
     break;
@@ -521,7 +520,7 @@ int Emulator::interrupt()
   if (cause == 1){
     running = false;
   }
-  cout << "Poziv prekidne rutine: " << endl;
+  // cout << "Poziv prekidne rutine: " << endl;
   // Ovo treba da vidim kako meni izgleda ...
 
   if (cause != 4){
@@ -542,16 +541,16 @@ unsigned int Emulator::read_dword(unsigned int address)
   unsigned char byte2;
   unsigned char byte3;
   unsigned char byte4;
-  cout << "Adresa za citanje je: " << hex << address << endl;
+  // cout << "Adresa za citanje je: " << hex << address << endl;
   byte1 = (unsigned char)(memory[address] & 0xFFFF);
   byte2 = (unsigned char)(memory[address + 1] & 0xFFFF);
   byte3 = (unsigned char)(memory[address + 2] & 0xFFFF);
   byte4 = (unsigned char)(memory[address + 3] & 0xFFFF);
-  cout << "byte1: " << setfill('0') << std::setw(4) << hex << (0xFFFF & byte1) << " ";
-  cout << "byte2: " << setfill('0') << std::setw(4) << hex << (0xFFFF & byte2) << " ";
-  cout << "byte3: " << setfill('0') << std::setw(4) << hex << (0xFFFF & byte3) << " ";
-  cout << "byte4: " << setfill('0') << std::setw(4) << hex << (0xFFFF & byte4) << " ";
+  // cout << "byte1: " << setfill('0') << std::setw(4) << hex << (0xFFFF & byte1) << " ";
+  // cout << "byte2: " << setfill('0') << std::setw(4) << hex << (0xFFFF & byte2) << " ";
+  // cout << "byte3: " << setfill('0') << std::setw(4) << hex << (0xFFFF & byte3) << " ";
+  // cout << "byte4: " << setfill('0') << std::setw(4) << hex << (0xFFFF & byte4) << " ";
   ret = (unsigned int)(((byte1 & 0xFFFF) << 24) | ((byte2 & 0xFFFF) << 16) | ((byte3 & 0xFFFF) << 8) | (byte4 & 0xFFFF));
-  cout << "Procitano: " << hex << ret << endl;
+  // cout << "Procitano: " << hex << ret << endl;
   return ret;
 }

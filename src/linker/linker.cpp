@@ -24,7 +24,6 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
     }
   }
   int ret = 0;
-  cout << "Map sections called" << endl;
   ret = this->map_section_table();
   if (ret < 0)
   {
@@ -33,7 +32,6 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
   }
   this->linker_combined_file << "Samo sekcije spojene da li ovde pravis gresku? " << endl;
   this->printSectionTableLinker();
-  cout << "Map sections done, call map symbols" << endl;
   ret = this->map_symbol_table();
   if (ret < 0)
   {
@@ -44,7 +42,6 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
                          << "Reloc before:" << endl
                          << endl;
   this->printRelocationTableLinker();
-  cout << "Map symbols done, call map relocations" << endl;
   ret = this->map_relocation_table();
   if (ret < 0)
   {
@@ -58,7 +55,6 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
   this->printSectionTableLinker();
   this->printSymbolTableLinker();
   this->printRelocationTableLinker();
-  cout << "Map relocations done, call resolve and make hex or make relocatable" << endl;
   if (this->is_hax)
   {
     ret = this->resolve_relocations();
@@ -357,7 +353,6 @@ int Linker::map_section_table()
       old_size = current.size;
     }
   }
-  cout << "Maped sections now move them " << endl;
   this->linker_help_file.close();
   if (!relocatable_output)
   {
@@ -453,7 +448,6 @@ int Linker::map_symbol_table()
     SectionTableNode &current = output_sections.at(it->first);
     SymbolTableNode *symbol = new SymbolTableNode(++_symbol_id, current.section_id, true, true, false);
     symbol->value = current.address;
-    cout << endl <<"Sta je sa adresom: " << symbol->value << endl;
     symbol->type = "SCTN";
     output_symbols.insert({current.name, *symbol});
   }
@@ -720,13 +714,9 @@ int Linker::resolve_relocations()
     {
       offset = it->offset;
       // offset += sections.at(it->filename).at(it->section_name).address - output_sections.at(it->section_name).address; Ja sam vec izracunala ovo u zajednickoj tabeli relokacija!
-      cout << endl
-           << "Za simbol: " << it->name << " u sekciji: " << it->section_name << "offset je: " << offset << endl
-           << endl;
     }
     else if (it->type == "R_X86_64_32")
     {
-      cout << "Ovde mi nije pc rel? " << endl;
       offset = it->offset;
       value = current.value; // + it->addend;
     }
@@ -735,30 +725,12 @@ int Linker::resolve_relocations()
       cout << "Error while resolving relocation";
       return -1;
     }
-    cout << endl << "Meni linker ovde razresava relokaciju: " << it->name << " u sekciji: " << current_section.name << " na offsetu: " << hex << offset << " sa vrednosti: " << hex << value << endl;
     value += it->addend;
     current_section.data[offset + 3] = ((char)(0xff & value));
     current_section.data[offset + 2] = ((char)(0xff & value >> 8));
     current_section.data[offset + 1] = ((char)(0xff & value >> 16));
     current_section.data[offset] = ((char)(0xff & value >> 24)); //+ ili -?
     this->linker_combined_file << "Relokacija: " << it->name << " u sekciji: " << it->section_name << " na offsetu: " << output_sections.at(it->section_name).address + offset  << " sa vrednosti: " << value  << " unutar sekcije offset: " <<  offset << endl;
-    // if ((!current.local && !current.extern_sym) || current.type == "SCTN")
-    // {
-    //   current_reloc.addend += current.value;
-    //   long value = current_reloc.addend;
-    //   cout << "Za relokaciju: " << current_reloc.relocation_id << " sa nazivom: " << current_reloc.name << endl;
-    //   cout << "Ne radi upis u sekciju " << it->second.section_name << " with offset: " << current_reloc.offset << endl;
-    //   // current_section.data[current_reloc.offset] = ((char)(value)); //ovo mi ne radi mislim nmg pristupim ovom offsetu
-    //   // current_section.data[current_reloc.offset - 1] = ((char)(value >> 8));
-    //   // current_section.data[current_reloc.offset - 2] = ((char)(value >> 16));
-    //   // current_section.data[current_reloc.offset - 3] = ((char)(value >> 24));
-    //   current_reloc.offset += current_section.address;
-    // }
-    // else
-    // {
-    //   cout << "Error while resolving relocation";
-    //   return -1;
-    // }
   }
   return 0;
 }
@@ -861,8 +833,6 @@ int Linker::resolve_relocations_relocatable()
     // long new_value = (long)((higher << 16) | (0xFFFF & lower));
     long new_value = output_symbols.at(current_relocation.name).value;
     value += new_value;
-    // cout << "Hoce da upise novu vrednost: " << value << " za relokaciju: " << current_relocation.name << " from data added: " << new_value << " on offset: " <<  hex <<current_relocation.offset << endl;
-
     output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 3] = (0xFF & value);
     output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 2] = (0xFF & (value >> 8));
     output_sections.find(current_relocation.section_name)->second.data[current_relocation.offset + 1] = (0xFF & (value >> 16));
