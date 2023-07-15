@@ -39,7 +39,7 @@ public:
   // regex word_dir = regex("\\.word ((" + symbol_regex + "|" + literal_regex + ")(,(" + symbol_regex + "|" + literal_regex + "))*)$");
   regex word_dir =  regex("^\\.word ((" + symbol_regex + "|" + literal_regex + ")(,(" + symbol_regex + "|" + literal_regex + "))*)$");
   regex skip_dir = regex("\\.skip (" + literal_regex + ")$");
-  regex ascii_dir = regex("\\.ascii (\"" + symbol_regex + "\")$");
+  regex ascii_dir = regex("\\.ascii\\s+\"" + symbol_regex + "\"$");
   regex end_dir = regex("\\.end$");
 
   //-----------------------------------------------------------------------Instructions-------------------------

@@ -1,40 +1,42 @@
 INCLUDE_DIR = inc
 SOURCE_DIR = src
-TEST_DIR = tests
+TEST_DIR_A = /A
 ASSEMBLER_DIR = ./src/assembler
 LINKER_DIR = ./src/linker
 EMULATOR_DIR = ./src/emulator
+TEST_DIR_B = /B
 
+TEST_DIR = $(TEST_DIR_A)
 
 PROGRAM = assembler
-
 
 # LINKER_SCRIPT = linker_script.ld
 
 all : AS LD EM
 
 AS_all: AS1 AS2 AS3 AS4 AS5 AS6 
+ASB: AS1 AS2 AS4 AS5
 
 AS1: assembler.o
-	./assembler -o main.o main.s
+	./assembler -o main.o $(TEST_DIR)/main.s
 
 AS2: assembler.o
-	./assembler -o handler.o handler.s
+	./assembler -o handler.o $(TEST_DIR)/handler.s
 
 AS3: assembler.o
-	./assembler -o math.o math.s
+	./assembler -o math.o $(TEST_DIR)/math.s
 
 AS4: assembler.o
-	./assembler -o isr_terminal.o isr_terminal.s
+	./assembler -o isr_terminal.o $(TEST_DIR)/isr_terminal.s
 
 AS5: assembler.o
-	./assembler -o isr_timer.o isr_timer.s
+	./assembler -o isr_timer.o $(TEST_DIR)/isr_timer.s
 
 AS6: assembler.o
-	./assembler -o isr_software.o isr_software.s
+	./assembler -o isr_software.o $(TEST_DIR)/isr_software.s
 
 AS7: assembler.o
-	./assembler -o test.o test.s
+	./assembler -o test.o $(TEST_DIR)/test.s
 
 assembler.o:	$(ASSEMBLER_DIR)/main.cpp $(ASSEMBLER_DIR)/assembler.cpp $(ASSEMBLER_DIR)/tables.cpp
 	g++ -g -gdwarf-2 -fdebug-prefix-map==../ -o assembler  $(ASSEMBLER_DIR)/main.cpp $(ASSEMBLER_DIR)/assembler.cpp $(ASSEMBLER_DIR)/tables.cpp
@@ -58,6 +60,13 @@ LD3: linker.o
 
 LD4: linker.o
 	./linker -hex -place=my_code@0x40000000 -o programtest.hex test.o
+
+LDB: linker.o
+	./linker \
+	-hex \
+  -place=my_code@0x40000000 \
+  -o program.hex \
+  main.o isr_terminal.o isr_timer.o handler.o
 
 linker.o:	$(LINKER_DIR)/main.cpp $(LINKER_DIR)/linker.cpp $(ASSEMBLER_DIR)/tables.cpp
 	g++ -g -o linker  $(LINKER_DIR)/main.cpp $(LINKER_DIR)/linker.cpp $(ASSEMBLER_DIR)/tables.cpp

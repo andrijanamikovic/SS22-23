@@ -6,6 +6,7 @@
 #include <string.h>
 #include <fstream>
 #include <termios.h>
+#include <unistd.h>
 #include <vector>
 #include "tables.h"
 
@@ -104,6 +105,16 @@ private:
   unsigned int read_dword(unsigned int address);
   int store_dword(unsigned int address, int value);
   int get_reg_num(unsigned char reg);
+
+  //terminal
+  bool config_terminal();
+  void reset_terminal();
+  void read_char_in();
+  void convert_to_bigendian(vector<char> *data);
+
+  void maskInterrupts();
+  void enableInterrupt(FlagsStatus interrupt);
+  bool terminalIntterupt = false;
 };
 
 #endif

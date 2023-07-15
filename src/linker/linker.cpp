@@ -30,6 +30,7 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
     cout << "Error while mapping sections" << endl;
     return;
   }
+  // cout << "Mapped section table" << endl;
   this->linker_combined_file << "Samo sekcije spojene da li ovde pravis gresku? " << endl;
   this->printSectionTableLinker();
   ret = this->map_symbol_table();
@@ -38,6 +39,7 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
     cout << "Error while mapping symbols" << endl;
     return;
   }
+  // cout << "Mapped symbol table" << endl;
   this->linker_help_file << endl
                          << "Reloc before:" << endl
                          << endl;
@@ -48,6 +50,7 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
     cout << "Error while mapping rellocations" << endl;
     return;
   }
+  // cout << "Mapped relocation table" << endl;
   this->linker_combined_file << endl
                              << endl
                              << endl;
@@ -151,7 +154,7 @@ int Linker::load_data_for_linker(string file)
     }
     vector<char> data_vector;
     data_vector = current_section->data;
-    convert_to_bigendian(&data_vector);
+    // convert_to_bigendian(&data_vector);
     current_section->data.clear();
     current_section->data = data_vector;
     file_sections.insert({current_section->name, *current_section});
@@ -451,13 +454,18 @@ int Linker::map_symbol_table()
     symbol->type = "SCTN";
     output_symbols.insert({current.name, *symbol});
   }
+  // cout << "Mapped sections as symbols" << endl;
   for (string file : input_files)
   {
+    // cout << "Start file: " << file << endl;
     unordered_map<string, SymbolTableNode> current_symbol_table = symbols.at(file);
     unordered_map<string, SectionTableNode> current_section_table = sections.at(file);
     for (auto it = current_symbol_table.begin(); it != current_symbol_table.end(); ++it)
     {
       SymbolTableNode &symbil_in_file = it->second;
+      // if (it->first == "")
+      //   continue;
+      // cout << "Mapiran symvol: " << it->first << endl;
       if (it->second.extern_sym)
       {
         if (output_symbols.find(it->first) != output_symbols.end())
@@ -726,10 +734,10 @@ int Linker::resolve_relocations()
       return -1;
     }
     value += it->addend;
-    current_section.data[offset + 3] = ((char)(0xff & value));
-    current_section.data[offset + 2] = ((char)(0xff & value >> 8));
-    current_section.data[offset + 1] = ((char)(0xff & value >> 16));
-    current_section.data[offset] = ((char)(0xff & value >> 24)); //+ ili -?
+    current_section.data[offset] = ((char)(0xff & value));
+    current_section.data[offset + 1] = ((char)(0xff & value >> 8));
+    current_section.data[offset + 2] = ((char)(0xff & value >> 16));
+    current_section.data[offset + 3] = ((char)(0xff & value >> 24)); //+ ili -?
     this->linker_combined_file << "Relokacija: " << it->name << " u sekciji: " << it->section_name << " na offsetu: " << output_sections.at(it->section_name).address + offset  << " sa vrednosti: " << value  << " unutar sekcije offset: " <<  offset << endl;
   }
   return 0;
