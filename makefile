@@ -6,7 +6,7 @@ LINKER_DIR = ./src/linker
 EMULATOR_DIR = ./src/emulator
 TEST_DIR_B = /B
 
-TEST_DIR = $(TEST_DIR_B)
+TEST_DIR = $(TEST_DIR_A)
 
 PROGRAM = assembler
 
@@ -56,7 +56,7 @@ LD2: linker.o
 LD3: linker.o
 	./linker \
 	-relocatable \
-	-o program.hex main.o handler.o math.o isr_terminal.o isr_timer.o isr_software.o
+	-o program.o main.o handler.o math.o isr_terminal.o isr_timer.o isr_software.o
 
 LD4: linker.o
 	./linker -hex -place=my_code@0x40000000 -o programtest.hex test.o
