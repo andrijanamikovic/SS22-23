@@ -6,6 +6,7 @@
 #include <string.h>
 #include <fstream>
 #include <termios.h>
+#include <unistd.h>
 #include <vector>
 #include "tables.h"
 
@@ -16,10 +17,10 @@ using namespace std;
 const long MEM_MAPPED_REGISTERS = 0xFFFFFF00; 
 const long MAPPED_REG_SIZE = 256;
 const long START_ADDRESS = 0x40000000;
-const long term_out_min = 0xFFFFFF00;
-const long term_out_max = 0xFFFFFF03;
-const long term_in_min = 0xFFFFFF04;
-const long term_in_max = 0xFFFFFF07;
+const unsigned int term_out_min = 0xFFFFFF00;
+const unsigned int term_out_max = 0xFFFFFF03;
+const unsigned int term_in_min = 0xFFFFFF04;
+const unsigned int term_in_max = 0xFFFFFF07;
 const unsigned long MEM_SIZE = 0xFFFFFFFF;
 const int BYTE = 1;
 const int WORD = 2;
@@ -90,6 +91,7 @@ private:
   vector<Segment> segments;
   vector<char> memory;
   bool running;
+  bool interrupted = false;
   int reg[16]; 
   int status;
   int handler;
@@ -104,6 +106,16 @@ private:
   unsigned int read_dword(unsigned int address);
   int store_dword(unsigned int address, int value);
   int get_reg_num(unsigned char reg);
+
+  //terminal
+  bool config_terminal();
+  void reset_terminal();
+  void read_char_in();
+  void convert_to_bigendian(vector<char> *data);
+
+  void maskInterrupts();
+  void enableInterrupt(FlagsStatus interrupt);
+  bool terminalIntterupt = false;
 };
 
 #endif
