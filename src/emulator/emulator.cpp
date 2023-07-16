@@ -25,7 +25,7 @@ Emulator::Emulator(string input_file)
   this->reg[pc] = START_ADDRESS;
   this->reg[sp] = MEM_MAPPED_REGISTERS;
   this->reg[16] = {0};
-  this->status = 5; //? 7
+  this->status = 7; //? 7
   this->cause = no_interrupts;
   this->handler = 0;
   memory.assign(MEM_SIZE, 0);
@@ -48,20 +48,20 @@ void Emulator::emulate()
     cout << "Error while reading data for emulator" << endl;
     return;
   }
-  // reset_terminal();
-  if (config_terminal() == false) {
+  if (config_terminal() == false)
+  {
     cout << "Error while configuring the terminal" << endl;
     return;
   }
-
+  enableInterrupt(Tr);
   while (this->running)
   {
-    //   // loop
+    // loop
     ret = this->read_instruction();
   }
-  reset_terminal();
   this->emulator_help_file.close();
   this->print_register_output();
+  reset_terminal();
 }
 
 int Emulator::load_data_for_emulator()
@@ -150,7 +150,7 @@ int Emulator::store_dword(unsigned int address, int value)
   memory[address + 1] = ((char)(0xff & value >> 8));
   memory[address + 2] = ((char)(0xff & value >> 16));
   memory[address + 3] = ((char)(0xff & value >> 24)); //+ ili -?
-  // cout << "Adresa je: " << hex << address << endl; 
+  // cout << "Adresa je: " << hex << address << endl;
   // terminal
   if (address == term_out_min)
   {
@@ -161,7 +161,8 @@ int Emulator::store_dword(unsigned int address, int value)
 
 void Emulator::print_register_output()
 {
-  cout << "------------------------------------------------" << endl;
+  cout << endl
+       << "------------------------------------------------" << endl;
   cout << "Emulated processor executed halt instruction" << endl;
   cout << "Emulated processor state:" << endl;
 
@@ -185,10 +186,10 @@ void Emulator::print_register_output()
   cout << "r14=0x" << std::setfill('0') << std::setw(8) << hex << reg[14] << " ";
   cout << "r15=0x" << std::setfill('0') << std::setw(8) << hex << reg[15] << " ";
   cout << endl;
-  cout << "handler=0x" << std::setfill('0') << std::setw(8) << hex << handler << " ";
-  cout << "cause=0x" << std::setfill('0') << std::setw(8) << hex << cause << " ";
-  cout << "status=0x" << std::setfill('0') << std::setw(8) << hex << status << " ";
-  cout << endl;
+  // cout << "handler=0x" << std::setfill('0') << std::setw(8) << hex << handler << " ";
+  // cout << "cause=0x" << std::setfill('0') << std::setw(8) << hex << cause << " ";
+  // cout << "status=0x" << std::setfill('0') << std::setw(8) << hex << status << " ";
+  // cout << endl;
 }
 
 int Emulator::read_instruction()
@@ -196,10 +197,16 @@ int Emulator::read_instruction()
   int ret = 0;
   int opcode;
   opcode = read_dword(reg[pc]);
-  // cout << "PC: " << hex << reg[pc] << endl;
+  emulator_help_file << "PC: " << hex << reg[pc] << endl;
   // this->print_register_output();
   execute(opcode);
   read_char_in();
+  if (interrupted)
+  {
+    interrupt();
+    interrupted = false;
+    enableInterrupt(Tr);
+  }
   return ret;
 }
 
@@ -212,21 +219,22 @@ int Emulator::execute(int opcode)
   unsigned char regA = (unsigned char)((opcode >> 20) & 0xF);  // 24-20
   unsigned char regB = (unsigned char)((opcode >> 16) & 0xF);  // 20-16
   unsigned char regC = (unsigned char)((opcode >> 12) & 0xF);  // 16-12
-  int disp = (int)(opcode & 0xFFF);                   // 12-0
+  int disp = (int)(opcode & 0xFFF);                            // 12-0
   // cout << setfill('0') << std::setw(2) << hex << (0xFF & code) << " ";
   // cout << setfill('0') << std::setw(1) << hex << (0xF & regA) << " ";
   // cout << setfill('0') << std::setw(1) << hex << (0xF & regB) << " ";
   // cout << setfill('0') << std::setw(1) << hex << (0xF & regC) << " ";
   // cout << setfill('0') << std::setw(3) << hex << (0xFFF & disp) << " ";
   // cout << endl;
-  if ((disp & 0x800 )== 0x800) {
-      disp = -(((~disp) + 1) & 0xFFF);
+  if ((disp & 0x800) == 0x800)
+  {
+    disp = -(((~disp) + 1) & 0xFFF);
   }
   switch (code)
   {
   case HALT:
     reg[pc] = reg[pc] + 4;
-    // cout << "HALT" << endl;
+    emulator_help_file << "HALT" << endl;
     running = false;
     return 0;
     break;
@@ -243,10 +251,10 @@ int Emulator::execute(int opcode)
     cause = software_interrupt;
     // //status <= status &(~0x1);
     status = status & (~0x1);
-    // //pc <= handle;
+    // pc <= handle;
     reg[pc] = handler;
     interrupted = true;
-    // cout << "INT handler:" << hex << handler << endl;
+    emulator_help_file << "INT handler:" << hex << handler << endl;
     break;
   case IRET:
     // pop status
@@ -254,14 +262,12 @@ int Emulator::execute(int opcode)
     reg[sp] = reg[sp] + 4;
     // pop pc
     reg[pc] = reg[pc] + 4;
-    enableInterrupt(Tr);
-    // cout << "IRET" << endl;
+    emulator_help_file << "IRET" << endl;
     break;
   case XCHG:
     // temp <= regB
     // regB <= regC
     // gerC <= temp
-    this->emulator_help_file << "XCHG " << regB << " i " << regC << endl;
     temp = reg[regB];
     if (regB != 0)
       reg[regB] = reg[regC];
@@ -269,96 +275,85 @@ int Emulator::execute(int opcode)
       reg[regC] = temp;
     if (regB != pc && regC != pc)
       reg[pc] += 4;
-    // cout << "XCHG" << endl;
+    emulator_help_file << "XCHG" << endl;
     break;
   case ADD:
     // regA <= regB + regC
-    // cout << "add " << regA << " = " << regB << " + " << regC << endl;
     if (regA != 0)
       reg[regA] = reg[regB] + reg[regC];
     if (regA != pc)
       reg[pc] += 4;
-    // cout << "ADD" << endl;
+    emulator_help_file << "ADD" << endl;
     break;
   case SUB:
     // regA <= regB - regC
-    // cout << "sub " << regA << " = " << regB << " - " << regC << endl;
     if (regA != 0)
       reg[regA] = reg[regB] - reg[regC];
-    // cout << "SUB" << endl;
+    emulator_help_file << "SUB" << endl;
     if (regA != pc)
       reg[pc] += 4;
     break;
   case MUL:
     // regA <= regB * regC
-    // cout << "mul " << regA << " = " << regB << " * " << regC << endl;
     if (regA != 0)
       reg[regA] = reg[regB] * reg[regC];
     if (regA != pc)
       reg[pc] += 4;
-    // cout << "MUL" << endl;
+    emulator_help_file << "MUL" << endl;
     break;
   case DIV:
     // regA <= regB / regC
-    // cout << "div " << regA << " = " << regB << " / " << regC << endl;
     if (regA != 0)
       reg[regA] = reg[regB] / reg[regC];
-    // cout << "DIV" << endl;
+    emulator_help_file << "DIV" << endl;
     if (regA != pc)
       reg[pc] += 4;
     break;
   case NOT:
     // regA <= ~regB
-    // cout << "not " << regA << " = ~" << regB << endl;
     if (regA != 0)
       reg[regA] = ~reg[regB];
-    // cout << "NOT" << endl;
+    emulator_help_file << "NOT" << endl;
     if (regA != pc)
       reg[pc] += 4;
     break;
   case AND:
     // regA <= regB & regC
-    // cout << "and " << regA << "= " << regB << " & " << regC << endl;
-
     if (regA != 0)
       reg[regA] = reg[regB] & reg[regC];
-    // cout << "AND" << endl;
+    emulator_help_file << "AND" << endl;
     if (regA != pc)
       reg[pc] += 4;
     break;
   case OR:
     // regA <= regB | regC
-    // cout << "or " << regA << " = " << regB << " | " << regC << endl;
     if (regA != 0)
       reg[regA] = reg[regB] | reg[regC];
-    // cout << "OR" << endl;
+    emulator_help_file << "OR" << endl;
     if (regA != pc)
       reg[pc] += 4;
     break;
   case XOR:
     // regA <= regB ^ regC
-    // cout << "xor " << reg[regA] << " = " << reg[regB] << " ^ " << reg[regC] << endl;
     if (regA != 0)
       reg[regA] = reg[regB] ^ reg[regC];
-    // cout << "XOR" << endl;
+    emulator_help_file << "XOR" << endl;
     if (regA != pc)
       reg[pc] += 4;
     break;
   case SHL:
     // regA <= regB << regC
-    // cout << "shl " << reg[regA] << " = " << reg[regB] << " << " << reg[regC] << endl;
     if (regA != 0)
       reg[regA] = reg[regB] << reg[regC];
-    // cout << "SHL" << endl;
+    emulator_help_file << "SHL" << endl;
     if (regA != pc)
       reg[pc] += 4;
     break;
   case SHR:
     // regA <= regB >> regC
-    // cout << "shr " << reg[regA] << " = " << reg[regB] << " >> " << reg[regC] << endl;
     if (regA != 0)
       reg[regA] = reg[regB] >> reg[regC];
-    // cout << "SHR" << endl;
+    emulator_help_file << "SHR" << endl;
     if (regA != pc)
       reg[pc] += 4;
     break;
@@ -368,36 +363,34 @@ int Emulator::execute(int opcode)
     reg[sp] = reg[sp] - 4;
     store_dword(reg[sp], reg[pc] + 4);
     address = reg[regA] + reg[regB] + disp;
-    // cout << "ovde mi disp brate: " << hex << disp << "pc mi je: " << hex << reg[regA] << " a ovaj drugi " << hex << reg[regB] << endl;
     address = address & 0xFFFFFFFF;
-    // cout << hex << address << endl;
     val = read_dword(address) & 0xFFFFFFFF;
     reg[pc] = val;
-    // cout << "CALL2 procitano sa adrese " << hex << address << " vrednost: " << hex << val << endl;
+    emulator_help_file << "CALL2 procitano sa adrese " << hex << address << " vrednost: " << hex << val << endl;
     break;
   case JMP1:
     // pc <= regA + d
     reg[pc] = (reg[regA] + disp) & 0xFFFFFFFF;
-    // cout << "JMP1 preskacem pool: " << hex << reg[regA] + disp << endl;
+    emulator_help_file << "JMP1 preskacem pool: " << hex << reg[regA] + disp << endl;
     break;
   case JMP:
     // pc <= meme[regA + d]
     reg[pc] = read_dword(reg[regA] + disp) & 0xFFFFFFFF;
-    // cout << "JMP procitano sa adrese: " << hex << reg[regA] + disp << endl;
+    emulator_help_file << "JMP procitano sa adrese: " << hex << reg[regA] + disp << endl;
     break;
   case BEQ:
     // if (regB == regC)
     // pc <= meme[regB + d]
     if (reg[regB] == reg[regC])
     {
-      // cout << "Prosao je BEQ" << endl;
+      emulator_help_file << "Prosao je BEQ" << endl;
       reg[pc] = read_dword(reg[regA] + disp) & 0xFFFFFFFF;
     }
     else
     {
       reg[pc] += 4;
     }
-    // cout << "BEQ2 procitano sa adrese: " << hex << reg[regA] + disp << endl;
+    emulator_help_file << "BEQ2 procitano sa adrese: " << hex << reg[regA] + disp << endl;
     break;
   case BNE:
     // if (regA != regC)
@@ -409,10 +402,8 @@ int Emulator::execute(int opcode)
     else
     {
       reg[pc] += 4;
-      // cout << "Jednaki su pici dalje" << endl;
     }
-    // this->print_register_output();
-    // cout << "BNE2 procitano sa adrese: " << hex <<  reg[regA] + disp<< endl;
+    emulator_help_file << "BNE2 procitano sa adrese: " << hex <<  reg[regA] + disp<< endl;
     break;
   case BGT:
     // if (regA > regC)
@@ -425,13 +416,13 @@ int Emulator::execute(int opcode)
     {
       reg[pc] += 4;
     }
-    // cout << "BGT2 procitano sa adrese: " << hex <<  reg[regA] + disp << endl;
+    emulator_help_file << "BGT2 procitano sa adrese: " << hex <<  reg[regA] + disp << endl;
     break;
   case LD1:
     // regA <= regB + D
     if (regA != 0)
       reg[regA] = reg[regB] + disp;
-    // cout << "LD1" << endl << hex << reg[regA] << endl;
+    emulator_help_file << "LD1" << endl << hex << reg[regA] << endl;
     if (regA != pc)
       reg[pc] += 4;
     break;
@@ -441,22 +432,21 @@ int Emulator::execute(int opcode)
       reg[regA] = read_dword(reg[regB] + reg[regC] + disp) & 0xFFFFFFFF;
     if (regA != pc)
       reg[pc] += 4;
-    // cout << "LD2 cita sa adrese: " << hex << reg[regB] + reg[regC] + disp << endl;
-    // cout << "Upisao je u: "  << regA << " = " << hex << reg[regA] << endl;
+    emulator_help_file << "Upisao je u: "  << regA << " = " << hex << reg[regA] << endl;
     break;
   case ST1:
     // mem[regA + regB + disp] <= regC
     store_dword(reg[regA] + reg[regB] + disp, reg[regC]);
-    // cout << "Adresa za smestanje podatka je: " << hex << reg[regA] + reg[regB] + disp << " a podatak je " << hex << reg[regC] << endl;
-    // cout << "ST1" << endl;
+    emulator_help_file << "Adresa za smestanje podatka je: " << hex << reg[regA] + reg[regB] + disp << " a podatak je " << hex << reg[regC] << endl;
+    emulator_help_file << "ST1" << endl;
     reg[pc] += 4;
     break;
   case ST2:
     // mem[mem[regA + regB + disp]] <= regC
     address = read_dword(reg[regA] + reg[regB] + disp) & 0xFFFFFFFF;
-    // cout << "Adresa za smestanje podatka je: " << hex << address << " a podatak je " << hex << reg[regC] << endl;
+    emulator_help_file << "Adresa za smestanje podatka je: " << hex << address << " a podatak je " << hex << reg[regC] << endl;
     store_dword(address, reg[regC]);
-    // cout << "ST2" << endl;
+    emulator_help_file << "ST2" << endl;
     reg[pc] += 4;
     break;
   case CSRRD:
@@ -477,7 +467,7 @@ int Emulator::execute(int opcode)
         break;
       }
     reg[pc] += 4;
-    // cout << "CSRRD" << endl;
+    emulator_help_file << "CSRRD" << endl;
     break;
   case CSRWR:
     // csr[A] <= regB
@@ -488,7 +478,6 @@ int Emulator::execute(int opcode)
       break;
     case 1:
       handler = reg[regB];
-      // cout << "U handler je sad: " << hex << reg[regB] << endl;
       break;
     case 2:
       cause = reg[regB];
@@ -497,28 +486,26 @@ int Emulator::execute(int opcode)
       break;
     }
     reg[pc] += 4;
-    // cout << "CSRWR" << endl;
+    emulator_help_file << "CSRWR" << endl;
     break;
   case PUSH:
     // regA <= regA + D
     // mem32[regA] <= regC
     // if (regA != 0)
     //   reg[regA] = reg[regA] + disp;
-    reg[regA] +=  disp;
+    reg[regA] += disp;
     store_dword(reg[regA], reg[regC]);
-    // emulator_help_file << "PUSH " << endl;
+    emulator_help_file << "PUSH " << endl;
     reg[pc] += 4;
-    // cout << "PUSH" << endl;
     break;
   case POP:
     // regC <= mem[regB]
     // regA <= regA + d;
     reg[regC] = read_dword(reg[regA]) & 0xFFFFFFFF;
     reg[regA] += disp;
-    // emulator_help_file << "POP " << endl;
+    emulator_help_file << "POP " << endl;
     if (regC != pc)
       reg[pc] += 4;
-    // cout << "POP" << endl;
     break;
   default:
     interrupted = true;
@@ -532,12 +519,6 @@ int Emulator::execute(int opcode)
     cause = invalid_instruction;
     break;
   }
-  if (interrupted)
-  {
-    interrupt();
-    interrupted = false;
-    enableInterrupt(Tr);
-  } 
   return ret;
 }
 
@@ -548,17 +529,6 @@ int Emulator::interrupt()
   {
     running = false;
   }
-
-  // if (cause != 4)
-  // {
-  //   // //push pc;
-  //   reg[sp] = reg[sp] - 4;
-  //   store_dword(reg[sp], reg[pc]);
-  //   //  //push status;
-  //   reg[sp] = reg[sp] - 4;
-  //   store_dword(reg[sp], status);
-  // }
-  // cout << "Usao je u neki prekid: " << hex << cause << endl;
   if (cause == terminal_interrupt && (status & 2 == 0))
   {
     // terminal
@@ -570,9 +540,11 @@ int Emulator::interrupt()
     store_dword(reg[sp], status);
     terminalIntterupt = false;
     reg[pc] = handler;
-    // cout << "Prekid od terminala, nije maskiran" << endl;
+    emulator_help_file << "Prekid od terminala, nije maskiran" << endl;
     maskInterrupts();
-  } else if (cause == timer_interrupt) {
+  }
+  else if (cause == timer_interrupt)
+  {
     // cout << "Prekid od timera?" << endl;
     return ret;
   }
@@ -585,9 +557,9 @@ int Emulator::interrupt()
     reg[sp] = reg[sp] - 4;
     store_dword(reg[sp], status);
     reg[pc] = handler;
-  } else {
-    // emulator_help_file << "Prekid od terminala, maskiran je" << endl;
+    maskInterrupts();
   }
+  
   return ret;
 }
 
@@ -598,7 +570,7 @@ unsigned int Emulator::read_dword(unsigned int address)
   unsigned char byte2;
   unsigned char byte3;
   unsigned char byte4;
-  // cout << "Adresa za citanje je: " << hex << address << endl;
+  emulator_help_file << "Adresa za citanje je: " << hex << address << endl;
   byte1 = (unsigned char)(memory[address + 3] & 0xFFFF);
   byte2 = (unsigned char)(memory[address + 2] & 0xFFFF);
   byte3 = (unsigned char)(memory[address + 1] & 0xFFFF);
@@ -608,68 +580,38 @@ unsigned int Emulator::read_dword(unsigned int address)
   // cout << "byte3: " << setfill('0') << std::setw(4) << hex << (0xFFFF & byte3) << " ";
   // cout << "byte4: " << setfill('0') << std::setw(4) << hex << (0xFFFF & byte4) << " ";
   ret = (unsigned int)(((byte1 & 0xFFFF) << 24) | ((byte2 & 0xFFFF) << 16) | ((byte3 & 0xFFFF) << 8) | (byte4 & 0xFFFF));
-  // cout << "Procitano: " << hex << ret << endl;
+  emulator_help_file << "Procitano: " << hex << ret << endl;
   return ret;
 }
 
 //-----------------------------------------------------------Terminal---------------------------------------------------------------
 
-struct termios terminalSettings; // backup for standard input; in order to save settings before emulator execution
-/*volatile bool user_interrupt_emulation = false;*/
+struct termios terminalSettings; // backup 
 
-void backup_stdin_settings()
+void restore_settings()
 {
-  // https://pubs.opengroup.org/onlinepubs/7908799/xsh/tcsetattr.html
-  // At the end of emulation, this function will return initial settings (before emulation)
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &terminalSettings);
-  // TCSAFLUSH option makes that all changes waits for all characters to be written to STDIN (fd), but all characters waiting to be read will be discarded
 }
 
 bool Emulator::config_terminal()
 {
-  // https://pubs.opengroup.org/onlinepubs/7908799/xsh/tcgetattr.html
-  // fetch data from STDIN_FILENO to fill backup structure
   if (tcgetattr(STDIN_FILENO, &terminalSettings) < 0)
   {
     cout << "Cannot fetch settings from STDIN_FILENO to save them!" << endl;
     return false;
   }
 
-  // https://man7.org/linux/man-pages/man3/termios.3.html
-  // This settings will be changed. In backup_stdi_settings are data from STDIN_FILENO
-  // c_lflag - local model:
-  // canceled: ECHO - output and ECHONL - output new line on display is canceled because all output should be done in interrupt routine if user programm implies that
-  // canceled: ICANON - canonical form is canceled so the current form is noncanonical and no constaint is implemented (c_cc[VMIN] and c_cc[VTIME] need sto be set)
-  // canceled: IEXTEN - external mode
   static struct termios changed_settings = terminalSettings;
-  changed_settings.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN);
-  // those are set because of canceling ICANON
-  // this is called polling read -> read(int fd, void* buf, size_t count) is immediatelly called
-  changed_settings.c_cc[VMIN] = 0;  // minimal character that should be waited for read
-  changed_settings.c_cc[VTIME] = 0; // timeout between two character that should be waited (in decisecconds)
+  changed_settings.c_lflag &= ~(ECHO | ICANON | ECHONL); // | ECHONL | IEXTEN
+  changed_settings.c_cc[VMIN] = 0;  
+  changed_settings.c_cc[VTIME] = 0; 
 
-  // c_cflag - control model:
-  // canceled: CSIZE - predefined size of mask (number of bits)
-  // set:      CS8 - defined size of mask to 8b
-  // canceled: PARENB - parity bits set and check
-  changed_settings.c_cflag &= ~(CSIZE | PARENB);
-  changed_settings.c_cflag |= CS8;
+  if (atexit(restore_settings) != 0)
+  {
+    cout << "Cannot backup settings to STDIN_FILENO!";
+    return false;
+  }
 
-    // Set function that is finished after exiting from emulator
-    // This function will restore settings from STDIN which were set before changes
-    if (atexit(backup_stdin_settings) != 0)
-    {
-        cout <<  "Cannot backup settings to STDIN_FILENO!";
-        return false;
-    }
-
-
-  /*atexit(backup_stdin_settings);*/
-  // SIGINT is interrupt number for user generate interrupts
-  // this will set handler for this interrupt which will restore settings calling backup_stdin_settings function and then set marker user_interrupt_emulation to true
-  /*signal(SIGINT, restore_settings_on_user_interrupt);*/
-
-  // at the end fill STDIN_FILENO with changed data
   if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &changed_settings))
   {
     cout << "Cannot set changed settings to STDIN_FILENO" << endl;
@@ -680,37 +622,25 @@ bool Emulator::config_terminal()
 
 void Emulator::reset_terminal()
 {
-   struct termios terminalSettings;
-
-    // Fetch the original terminal settings
-    if (tcgetattr(STDIN_FILENO, &terminalSettings) < 0) {
-        std::cerr << "Error fetching terminal settings" << std::endl;
-        return;
-    }
-
-    // Restore the original settings
-    if (tcsetattr(STDIN_FILENO, TCSANOW, &terminalSettings) < 0) {
-        std::cerr << "Error restoring terminal settings" << std::endl;
-    }
+  restore_settings();
 }
 
 void Emulator::read_char_in()
 {
   char c;
   ssize_t bytesRead = read(STDIN_FILENO, &c, 1);
-  // cout << "Procitano bitova: " << bytesRead << endl;
   if (bytesRead == 1)
   {
-    // cout << "Read from terminal: ";
-    // emulator_help_file << c;
-    if (store_dword(term_in_min, c) < 0) {
-      cout << "ERRRORRRR" << endl;
+    emulator_help_file << "Read from terminal: ";
+    emulator_help_file << c;
+    if (store_dword(term_in_min, c) < 0)
+    {
+      cout << "Error" << endl;
+      return;
     }
     terminalIntterupt = true;
     interrupted = true;
     cause = terminal_interrupt;
-    // cout << "PREKID OD TERMINALA" << endl;
-    // cout << " ..=" << c;
   }
 }
 
@@ -721,6 +651,6 @@ void Emulator::maskInterrupts()
 
 void Emulator::enableInterrupt(FlagsStatus interrupt)
 {
-  // status &= ~interrupt; // set masked bit to 0, enable interrupt
+  status &= ~interrupt; // set masked bit to 0, enable interrupt
   return;
 }
