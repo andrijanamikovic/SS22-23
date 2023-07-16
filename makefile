@@ -6,7 +6,7 @@ LINKER_DIR = ./src/linker
 EMULATOR_DIR = ./src/emulator
 TEST_DIR_B = /B
 
-TEST_DIR = $(TEST_DIR_A)
+TEST_DIR = $(TEST_DIR_B)
 
 PROGRAM = assembler
 
