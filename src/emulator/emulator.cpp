@@ -602,9 +602,12 @@ bool Emulator::config_terminal()
   }
 
   static struct termios changed_settings = terminalSettings;
-  changed_settings.c_lflag &= ~(ECHO | ICANON | ECHONL); // | ECHONL | IEXTEN
+  changed_settings.c_lflag &= ~(ECHO | ICANON | ECHONL | IEXTEN); // | ECHONL | IEXTEN
   changed_settings.c_cc[VMIN] = 0;  
   changed_settings.c_cc[VTIME] = 0; 
+
+  changed_settings.c_cflag &= ~(CSIZE | PARENB);
+  changed_settings.c_cflag |= CS8;
 
   if (atexit(restore_settings) != 0)
   {
