@@ -13,7 +13,6 @@ void Linker::link(bool is_hax, bool relocatable_output, list<string> input_files
   this->input_files = input_files;
   this->output_file = output_file;
   this->linker_combined_file.open("linker.txt", ios::out);
-  // Za svaki ulazni da ucitam binarni fajl i to da pakujem negde?
   if (!this->relocatable_output)
     process_place();
   for (string file : input_files)

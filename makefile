@@ -6,15 +6,18 @@ LINKER_DIR = ./src/linker
 EMULATOR_DIR = ./src/emulator
 TEST_DIR_B = /B
 
-TEST_DIR = $(TEST_DIR_A)
+TEST_DIR = $(TEST_DIR_B)
 
 PROGRAM = assembler
 
 # LINKER_SCRIPT = linker_script.ld
 
-all : AS LD EM
+all : AS_all LD2 EM
+allB: ASB LDB EM
+clean_all: clean_as clean 
 
 AS_all: AS1 AS2 AS3 AS4 AS5 AS6 
+
 ASB: AS1 AS2 AS4 AS5
 
 AS1: assembler.o
@@ -94,7 +97,7 @@ lex.yy.o: lex.yy.c
 
 
 clean :
-	rm  linker.txt *_linker.txt *.hex hex_help.txt reloc_help.txt
+	rm  *.txt *.hex assembler linker amulator emulator *.hexreloc
 
 clean_as:
 	rm *.o*

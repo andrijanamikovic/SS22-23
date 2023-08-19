@@ -149,7 +149,7 @@ int Emulator::store_dword(unsigned int address, int value)
   memory[address] = ((char)(0xff & value));
   memory[address + 1] = ((char)(0xff & value >> 8));
   memory[address + 2] = ((char)(0xff & value >> 16));
-  memory[address + 3] = ((char)(0xff & value >> 24)); //+ ili -?
+  memory[address + 3] = ((char)(0xff & value >> 24)); 
   // cout << "Adresa je: " << hex << address << endl;
   // terminal
   if (address == term_out_min)

@@ -210,8 +210,8 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
         if (current_symbol.local)
         {
           RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.section_id, current_symbol.section_name, current_section);
-          relocation_data->type = "R_X86_64_PC32";
-          relocation_data->addend = current_symbol.value; // 0; // second.offset; dodovicu je 0
+          relocation_data->type = "R_X86_64_32";
+          relocation_data->addend = current_symbol.value; // 0; // second.offset;
           relocation_data->local = true;
           relocation_data->offset = second.offset;
           if (current_symbol.type == "SCTN")
@@ -221,7 +221,7 @@ void Assembler::savePoolData(string current_section, SectionTableNode *current_s
         else
         {
           RelocationTableNode *relocation_data = new RelocationTableNode(current_symbol.symbol_id, current_symbol.name, current_section);
-          relocation_data->type = "R_X86_64_PC32";
+          relocation_data->type = "R_X86_64_32";
           relocation_data->addend = 0;
           relocation_data->local = false;
           relocation_data->offset = second.offset;
@@ -295,7 +295,6 @@ void Assembler::assemble(string input_file, string output_file)
     cout << "Error while processing assembler data" << endl;
     return;
   }
-  // Ja treba i tabele da zapisem u binarni fajl sad??
   this->outputTables();
   this->printSectionTable();
   this->printSymbolTable();
@@ -847,7 +846,6 @@ int Assembler::process_section_dir(smatch match)
     if (sections.find(this->current_section) != sections.end())
     {
       SectionTableNode &current_section_node = sections.at(this->current_section);
-      // current_section_node.size = current_section_node.data.size();
       current_section_node.size = location_counter;
       assembler_help_file << "End of section: " << current_section_node.name << " with size: " << current_section_node.size << endl;
       calculatePoolData(this->current_section, &current_section_node);
@@ -864,7 +862,7 @@ int Assembler::process_section_dir(smatch match)
   SectionTableNode *newSection = new SectionTableNode(section_name, this->location_counter, 0, this->_section_id);
   sections.insert({section_name, *newSection});
   poolData data;
-  pool.insert({section_name, data}); // meni je ovde druga mapa prazna, ne znam dal to moze tako
+  pool.insert({section_name, data}); 
   this->current_section = section_name;
   this->location_counter = 0;
   this->pool_distance = 0;
@@ -898,7 +896,7 @@ int Assembler::process_word_dir(smatch match)
   SectionTableNode &sectionNode = sections.at(this->current_section);
   string word_label = ((string)match[0]);
   list<string> symbol_list = this->split(word_label.substr(word_label.find(" ") + 1, word_label.size()), ",");
-  this->location_counter = this->location_counter + symbol_list.size() * 4; // uvec za alociran prostor sa word
+  this->location_counter = this->location_counter + symbol_list.size() * 4; 
   return ret;
 }
 
@@ -936,7 +934,6 @@ int Assembler::word_dir_second(smatch match)
           relocation_data->addend = symbol.value;
           relocation_data->offset = location_counter;
           relocations.push_back(*relocation_data);
-          // relocation_data->offset = location_counter;
         }
         else
         {
@@ -1068,7 +1065,6 @@ int Assembler::process_end_dir(smatch match)
 }
 int Assembler::end_dir_second(smatch match)
 {
-  // da proverim dal su svi definisani simboli
   int ret = 0;
   if (current_section != "")
   {
@@ -1349,7 +1345,6 @@ int Assembler::ret_inst_second(smatch match)
   if (sections.find(this->current_section) != sections.end())
   {
     SectionTableNode &current_section_node = sections.at(this->current_section);
-    // current_section_node.size = current_section_node.data.size();
     assembler_help_file << "Ret in section: " << current_section_node.name << " with size: " << current_section_node.size << endl;
   }
   else
@@ -2425,7 +2420,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
     }
     else if (regex_search(operand, match, rx.register_absolute_operand_regex))
     {
-      int r = 0; // to nemam sad
+      int r = 0; 
       string operand = match.str(0);
       operand = operand.substr(1, operand.size() - 1);
       r = getRegNum(operand);
@@ -2519,7 +2514,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
           sectionNode.data.push_back((char)((reg << 4) & 0xF0));
           sectionNode.data.push_back((char)(reg << 4));
           sectionNode.data.push_back((char)0x92);
-          location_counter = location_counter + 4; // ali se onda ne poklapa sa prvim prolazom?
+          location_counter = location_counter + 4; 
           sectionNode.size += 8;
         }
       }
@@ -2544,7 +2539,7 @@ int Assembler::process_operand(string operand, int reg, bool load_store)
           sectionNode.data.push_back((char)((reg << 4) & 0xF0));
           sectionNode.data.push_back((char)(reg << 4));
           sectionNode.data.push_back((char)0x92);
-          location_counter = location_counter + 4; // ali se onda ne poklapa sa prvim prolazom?
+          location_counter = location_counter + 4; 
           sectionNode.size += 8;
         }
         this->assembler_help_file << "Load memory direct: " << operand << endl;
@@ -2569,7 +2564,6 @@ void Assembler::outputTables()
   for (auto it = sections.begin(); it != sections.end(); ++it)
   {
     vector<char> data = it->second.data;
-    // convert_to_little_endian(&data, data.size());
     dataInt = (unsigned)it->second.data.size();
     binary_output->write((char *)(&dataInt), sizeof(unsigned)); // size
     unsigned len = (unsigned)it->second.name.size();
@@ -2624,7 +2618,6 @@ void Assembler::outputTables()
     binary_output->write((char *)(&it->local), sizeof(bool));
     binary_output->write((char *)(&it->section), sizeof(bool));
     binary_output->write((char *)(&it->offset), sizeof(long));
-    // cout << it->second.symbol_id << " " << it->first << " " << it->second.section_id << "  " << it->second.addend << "  " << it->second.value << endl;
   }
   this->assembler_help_file << "Posle upisa: " << endl;
   this->printRelocationTable();
